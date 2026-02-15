@@ -6,8 +6,22 @@ import Link from 'next/link';
 import { useRegisterMutation } from '@/lib/api/authApi';
 import { useAppDispatch } from '@/lib/hooks';
 import { setCredentials } from '@/lib/slices/authSlice';
-import { UserPlus, Mail, Lock, User, Shield, ArrowRight, FileText } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, Shield, ArrowRight, FileText, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import clsx from 'clsx';
+
+function getPasswordStrength(pw: string) {
+  let score = 0;
+  if (pw.length >= 6) score++;
+  if (pw.length >= 8) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  return score; // 0-5
+}
+
+const strengthLabels = ['', 'Sangat Lemah', 'Lemah', 'Cukup', 'Kuat', 'Sangat Kuat'];
+const strengthColors = ['', 'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-emerald-500', 'bg-emerald-600'];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,13 +31,26 @@ export default function RegisterPage() {
     full_name: '',
     email: '',
     password: '',
+    confirmPassword: '',
     role: 'SPV' as 'SPV' | 'FINANCE' | 'OWNER',
   });
 
+  const passwordStrength = getPasswordStrength(form.password);
+  const passwordsMatch = form.confirmPassword.length === 0 || form.password === form.confirmPassword;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (form.password !== form.confirmPassword) {
+      toast.error('Password tidak cocok');
+      return;
+    }
     try {
-      const res = await register(form).unwrap();
+      const res = await register({
+        full_name: form.full_name,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+      }).unwrap();
       if (res.success && res.data) {
         dispatch(setCredentials(res.data));
         toast.success('Registrasi berhasil!');
@@ -135,6 +162,57 @@ export default function RegisterPage() {
                   className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                 />
               </div>
+              {form.password.length > 0 && (
+                <div className="mt-2">
+                  <div className="flex gap-1 mb-1">
+                    {[1, 2, 3, 4, 5].map((level) => (
+                      <div
+                        key={level}
+                        className={clsx(
+                          'h-1.5 flex-1 rounded-full transition-colors',
+                          level <= passwordStrength ? strengthColors[passwordStrength] : 'bg-slate-100'
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <p className={clsx('text-xs', passwordStrength <= 2 ? 'text-red-500' : 'text-emerald-600')}>
+                    {strengthLabels[passwordStrength]}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Konfirmasi Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={form.confirmPassword}
+                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                  placeholder="Ulangi password"
+                  className={clsx(
+                    'w-full pl-11 pr-10 py-3 border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 transition-all',
+                    !passwordsMatch
+                      ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500'
+                      : 'border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500'
+                  )}
+                />
+                {form.confirmPassword.length > 0 && (
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                    {passwordsMatch ? (
+                      <Check size={16} className="text-emerald-500" />
+                    ) : (
+                      <X size={16} className="text-red-500" />
+                    )}
+                  </div>
+                )}
+              </div>
+              {!passwordsMatch && (
+                <p className="text-xs text-red-500 mt-1">Password tidak cocok</p>
+              )}
             </div>
 
             <div>
@@ -159,7 +237,7 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !passwordsMatch || form.confirmPassword.length === 0}
               className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-xl font-medium hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (

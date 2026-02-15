@@ -14,6 +14,7 @@ import { useAppSelector } from '@/lib/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
 import {
@@ -26,6 +27,8 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export default function InvoicesPage() {
   const user = useAppSelector((s) => s.auth.user);
@@ -42,6 +45,8 @@ export default function InvoicesPage() {
   const [rejectNotes, setRejectNotes] = useState('');
   const [form, setForm] = useState({ project_id: '', amount: '', file_url: '' });
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [confirmApprove, setConfirmApprove] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
   const canCreate = user?.role === 'SPV';
   const canApprove = user?.role === 'FINANCE' || user?.role === 'OWNER';
@@ -53,6 +58,11 @@ export default function InvoicesPage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('Ukuran file maksimal 5MB');
+      e.target.value = '';
+      return;
+    }
     const formData = new FormData();
     formData.append('file', file);
     try {
@@ -83,10 +93,12 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleApprove = async (id: number) => {
+  const handleApprove = async () => {
+    if (confirmApprove === null) return;
     try {
-      await approveInvoice({ id }).unwrap();
+      await approveInvoice({ id: confirmApprove }).unwrap();
       toast.success('Invoice disetujui!');
+      setConfirmApprove(null);
     } catch (err: unknown) {
       const error = err as { data?: { message?: string } };
       toast.error(error?.data?.message || 'Gagal menyetujui invoice');
@@ -95,6 +107,10 @@ export default function InvoicesPage() {
 
   const handleReject = async () => {
     if (rejectModal === null) return;
+    if (rejectNotes.trim().length < 5) {
+      toast.error('Alasan penolakan minimal 5 karakter');
+      return;
+    }
     try {
       await rejectInvoice({ id: rejectModal, body: { notes: rejectNotes } }).unwrap();
       toast.success('Invoice ditolak');
@@ -106,10 +122,12 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async () => {
+    if (confirmDelete === null) return;
     try {
-      await deleteInvoice(id).unwrap();
+      await deleteInvoice(confirmDelete).unwrap();
       toast.success('Invoice dihapus');
+      setConfirmDelete(null);
     } catch (err: unknown) {
       const error = err as { data?: { message?: string } };
       toast.error(error?.data?.message || 'Gagal menghapus invoice');
@@ -196,7 +214,7 @@ export default function InvoicesPage() {
                         {canApprove && inv.status === 'PENDING' && (
                           <>
                             <button
-                              onClick={() => handleApprove(inv.id)}
+                              onClick={() => setConfirmApprove(inv.id)}
                               className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
                               title="Approve"
                             >
@@ -213,7 +231,7 @@ export default function InvoicesPage() {
                         )}
                         {canCreate && inv.status === 'PENDING' && (
                           <button
-                            onClick={() => handleDelete(inv.id)}
+                            onClick={() => setConfirmDelete(inv.id)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                             title="Delete"
                           >
@@ -297,31 +315,60 @@ export default function InvoicesPage() {
       <Modal isOpen={rejectModal !== null} onClose={() => setRejectModal(null)} title="Tolak Invoice" size="sm">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Catatan (opsional)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Alasan Penolakan <span className="text-red-500">*</span>
+            </label>
             <textarea
+              required
               value={rejectNotes}
               onChange={(e) => setRejectNotes(e.target.value)}
-              placeholder="Alasan penolakan..."
+              placeholder="Jelaskan alasan penolakan (min. 5 karakter)..."
               rows={3}
               className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
             />
+            {rejectNotes.length > 0 && rejectNotes.trim().length < 5 && (
+              <p className="text-xs text-red-500 mt-1">Minimal 5 karakter</p>
+            )}
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => setRejectModal(null)}
+              onClick={() => { setRejectModal(null); setRejectNotes(''); }}
               className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors"
             >
               Batal
             </button>
             <button
               onClick={handleReject}
-              className="flex-1 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-colors"
+              disabled={rejectNotes.trim().length < 5}
+              className="flex-1 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
             >
               Tolak
             </button>
           </div>
         </div>
       </Modal>
+
+      {/* Confirm Approve */}
+      <ConfirmDialog
+        isOpen={confirmApprove !== null}
+        onClose={() => setConfirmApprove(null)}
+        onConfirm={handleApprove}
+        title="Setujui Invoice?"
+        message="Invoice yang disetujui tidak bisa dibatalkan. Pastikan data sudah benar."
+        confirmLabel="Setujui"
+        variant="warning"
+      />
+
+      {/* Confirm Delete */}
+      <ConfirmDialog
+        isOpen={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={handleDelete}
+        title="Hapus Invoice?"
+        message="Invoice yang dihapus tidak bisa dikembalikan."
+        confirmLabel="Hapus"
+        variant="danger"
+      />
     </div>
   );
 }

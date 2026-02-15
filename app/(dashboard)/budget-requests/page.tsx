@@ -12,6 +12,7 @@ import { useAppSelector } from '@/lib/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
 import { Plus, Wallet, CheckCircle, XCircle } from 'lucide-react';
@@ -28,6 +29,8 @@ export default function BudgetRequestsPage() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ project_id: '', amount: '', reason: '' });
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [confirmApprove, setConfirmApprove] = useState<number | null>(null);
+  const [confirmReject, setConfirmReject] = useState<number | null>(null);
 
   const canApprove = user?.role === 'FINANCE' || user?.role === 'OWNER';
   const requests = data?.data || [];
@@ -52,20 +55,24 @@ export default function BudgetRequestsPage() {
     }
   };
 
-  const handleApprove = async (id: number) => {
+  const handleApprove = async () => {
+    if (confirmApprove === null) return;
     try {
-      await approveRequest(id).unwrap();
+      await approveRequest(confirmApprove).unwrap();
       toast.success('Budget request disetujui!');
+      setConfirmApprove(null);
     } catch (err: unknown) {
       const error = err as { data?: { message?: string } };
       toast.error(error?.data?.message || 'Gagal menyetujui');
     }
   };
 
-  const handleReject = async (id: number) => {
+  const handleReject = async () => {
+    if (confirmReject === null) return;
     try {
-      await rejectRequest(id).unwrap();
+      await rejectRequest(confirmReject).unwrap();
       toast.success('Budget request ditolak');
+      setConfirmReject(null);
     } catch (err: unknown) {
       const error = err as { data?: { message?: string } };
       toast.error(error?.data?.message || 'Gagal menolak');
@@ -128,14 +135,14 @@ export default function BudgetRequestsPage() {
                 {canApprove && req.status === 'PENDING' && (
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => handleApprove(req.id)}
+                      onClick={() => setConfirmApprove(req.id)}
                       className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
                       title="Approve"
                     >
                       <CheckCircle size={20} />
                     </button>
                     <button
-                      onClick={() => handleReject(req.id)}
+                      onClick={() => setConfirmReject(req.id)}
                       className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
                       title="Reject"
                     >
@@ -208,6 +215,28 @@ export default function BudgetRequestsPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Confirm Approve */}
+      <ConfirmDialog
+        isOpen={confirmApprove !== null}
+        onClose={() => setConfirmApprove(null)}
+        onConfirm={handleApprove}
+        title="Setujui Budget Request?"
+        message="Budget request yang disetujui akan menambah anggaran proyek."
+        confirmLabel="Setujui"
+        variant="warning"
+      />
+
+      {/* Confirm Reject */}
+      <ConfirmDialog
+        isOpen={confirmReject !== null}
+        onClose={() => setConfirmReject(null)}
+        onConfirm={handleReject}
+        title="Tolak Budget Request?"
+        message="Apakah Anda yakin ingin menolak budget request ini?"
+        confirmLabel="Tolak"
+        variant="danger"
+      />
     </div>
   );
 }

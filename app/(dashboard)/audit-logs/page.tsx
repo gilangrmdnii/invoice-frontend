@@ -5,14 +5,19 @@ import { useGetAuditLogsQuery } from '@/lib/api/auditLogApi';
 import { formatDateTime } from '@/lib/utils';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
+import Pagination from '@/components/ui/Pagination';
 import { ScrollText, Filter } from 'lucide-react';
 import clsx from 'clsx';
 
+const ITEMS_PER_PAGE = 15;
+
 export default function AuditLogsPage() {
   const [entityType, setEntityType] = useState<string>('');
+  const [page, setPage] = useState(1);
   const { data, isLoading, isError } = useGetAuditLogsQuery(entityType || undefined);
 
   const logs = data?.data || [];
+  const paginatedLogs = logs.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const getActionColor = (action: string) => {
     switch (action) {
@@ -45,13 +50,14 @@ export default function AuditLogsPage() {
           <Filter size={16} className="text-slate-400" />
           <select
             value={entityType}
-            onChange={(e) => setEntityType(e.target.value)}
+            onChange={(e) => { setEntityType(e.target.value); setPage(1); }}
             className="px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           >
             <option value="">Semua Tipe</option>
             <option value="invoice">Invoice</option>
             <option value="expense">Expense</option>
             <option value="budget_request">Budget Request</option>
+            <option value="project">Project</option>
           </select>
         </div>
       </div>
@@ -72,7 +78,7 @@ export default function AuditLogsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {logs.map((log) => (
+                {paginatedLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4 text-sm text-slate-500 whitespace-nowrap">
                       {formatDateTime(log.created_at)}
@@ -102,6 +108,12 @@ export default function AuditLogsPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={page}
+            totalItems={logs.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={setPage}
+          />
         </div>
       )}
     </div>

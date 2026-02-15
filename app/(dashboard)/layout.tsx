@@ -4,11 +4,13 @@ import { useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import AuthGuard from '@/components/layout/AuthGuard';
+import { useSSE } from '@/lib/hooks/useSSE';
 import clsx from 'clsx';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  useSSE();
 
   return (
     <AuthGuard>

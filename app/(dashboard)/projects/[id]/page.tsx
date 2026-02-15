@@ -15,6 +15,7 @@ import { formatCurrency, formatDate, getBudgetPercentage } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { Edit3, UserPlus, Trash2, Users, Wallet, Calendar, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -31,6 +32,7 @@ export default function ProjectDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', description: '', status: '' });
+  const [confirmRemove, setConfirmRemove] = useState<number | null>(null);
 
   const canManage = user?.role === 'FINANCE' || user?.role === 'OWNER';
   const project = data?.data;
@@ -67,10 +69,12 @@ export default function ProjectDetailPage() {
     }
   };
 
-  const handleRemoveMember = async (userId: number) => {
+  const handleRemoveMember = async () => {
+    if (confirmRemove === null) return;
     try {
-      await removeMember({ projectId: id, userId }).unwrap();
+      await removeMember({ projectId: id, userId: confirmRemove }).unwrap();
       toast.success('Anggota berhasil dihapus');
+      setConfirmRemove(null);
     } catch (err: unknown) {
       const error = err as { data?: { message?: string } };
       toast.error(error?.data?.message || 'Gagal menghapus anggota');
@@ -181,7 +185,7 @@ export default function ProjectDetailPage() {
                   )}
                   {canManage && (
                     <button
-                      onClick={() => handleRemoveMember(m.user_id)}
+                      onClick={() => setConfirmRemove(m.user_id)}
                       className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                     >
                       <Trash2 size={14} />
@@ -246,6 +250,17 @@ export default function ProjectDetailPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Confirm Remove Member */}
+      <ConfirmDialog
+        isOpen={confirmRemove !== null}
+        onClose={() => setConfirmRemove(null)}
+        onConfirm={handleRemoveMember}
+        title="Hapus Anggota?"
+        message="Anggota yang dihapus tidak bisa mengakses proyek ini lagi."
+        confirmLabel="Hapus"
+        variant="danger"
+      />
 
       {/* Add Member Modal */}
       <AddMemberModal
