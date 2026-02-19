@@ -1,4 +1,3 @@
-// ==================== Auth ====================
 export interface User {
   id: number;
   full_name: string;
@@ -25,14 +24,12 @@ export interface AuthResponse {
   user: User;
 }
 
-// ==================== API Response ====================
 export interface ApiResponse<T = null> {
   success: boolean;
   message: string;
   data: T;
 }
 
-// ==================== Project ====================
 export interface Project {
   id: number;
   name: string;
