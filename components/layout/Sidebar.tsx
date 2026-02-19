@@ -14,6 +14,7 @@ import {
   Wallet,
   Bell,
   ScrollText,
+  Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -46,6 +47,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   if (user?.role === 'FINANCE' || user?.role === 'OWNER') {
     navItems.push({ href: '/audit-logs', label: 'Audit Log', icon: ScrollText });
+    navItems.push({ href: '/settings', label: 'Pengaturan', icon: Settings });
   }
 
   return (

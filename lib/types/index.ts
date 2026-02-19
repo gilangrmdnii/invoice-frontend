@@ -71,31 +71,120 @@ export interface AddMemberRequest {
 }
 
 // ==================== Invoice ====================
+export type InvoiceType = 'DP' | 'FINAL_PAYMENT' | 'TOP_1' | 'TOP_2' | 'TOP_3' | 'MEALS' | 'ADDITIONAL';
+
+export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
+  DP: 'Down Payment (DP)',
+  FINAL_PAYMENT: 'Final Payment',
+  TOP_1: 'Termin 1 (TOP 1)',
+  TOP_2: 'Termin 2 (TOP 2)',
+  TOP_3: 'Termin 3 (TOP 3)',
+  MEALS: 'Meals',
+  ADDITIONAL: 'Additional',
+};
+
+export interface InvoiceItem {
+  id?: number;
+  invoice_id?: number;
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  subtotal: number;
+  sort_order?: number;
+}
+
 export interface Invoice {
   id: number;
-  project_id: number;
   invoice_number: string;
+  invoice_type: InvoiceType;
+  project_id: number;
   amount: number;
-  file_url: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  uploaded_by: number;
+  file_url?: string;
+  recipient_name: string;
+  recipient_address?: string;
+  attention?: string;
+  po_number?: string;
+  invoice_date: string;
+  dp_percentage?: number;
+  subtotal: number;
+  tax_percentage: number;
+  tax_amount: number;
+  notes?: string;
+  language: 'ID' | 'EN';
+  created_by: number;
   approved_by?: number;
-  project?: Project;
-  uploader?: User;
-  approver?: User;
+  reject_notes?: string;
+  items?: InvoiceItem[];
   created_at: string;
   updated_at: string;
 }
 
 export interface CreateInvoiceRequest {
   project_id: number;
-  amount: number;
-  file_url: string;
+  invoice_type: InvoiceType;
+  recipient_name: string;
+  recipient_address?: string;
+  attention?: string;
+  po_number?: string;
+  invoice_date: string;
+  dp_percentage?: number;
+  tax_percentage: number;
+  notes?: string;
+  language: 'ID' | 'EN';
+  file_url?: string;
+  items: Omit<InvoiceItem, 'id' | 'invoice_id' | 'sort_order'>[];
 }
 
 export interface UpdateInvoiceRequest {
-  amount?: number;
+  recipient_name?: string;
+  recipient_address?: string;
+  attention?: string;
+  po_number?: string;
+  invoice_date?: string;
+  dp_percentage?: number;
+  tax_percentage?: number;
+  notes?: string;
+  language?: 'ID' | 'EN';
   file_url?: string;
+  items?: Omit<InvoiceItem, 'id' | 'invoice_id' | 'sort_order'>[];
+}
+
+// ==================== Company Settings ====================
+export interface CompanySettings {
+  id: number;
+  company_name: string;
+  company_code: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  npwp?: string;
+  bank_name?: string;
+  bank_account_number?: string;
+  bank_account_name?: string;
+  bank_branch?: string;
+  logo_url?: string;
+  signatory_name?: string;
+  signatory_title?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpsertCompanySettingsRequest {
+  company_name: string;
+  company_code: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  npwp?: string;
+  bank_name?: string;
+  bank_account_number?: string;
+  bank_account_name?: string;
+  bank_branch?: string;
+  logo_url?: string;
+  signatory_name?: string;
+  signatory_title?: string;
 }
 
 // ==================== Expense ====================

@@ -21,6 +21,7 @@ export const baseApi = createApi({
     'Dashboard',
     'Notification',
     'AuditLog',
+    'CompanySettings',
   ],
   endpoints: () => ({}),
 });
