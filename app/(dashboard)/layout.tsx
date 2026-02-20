@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import AuthGuard from '@/components/layout/AuthGuard';
@@ -10,7 +11,13 @@ import clsx from 'clsx';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
   useSSE();
+
+  // Auto-close mobile sidebar on navigation
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   return (
     <AuthGuard>
@@ -24,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
 
         {/* Sidebar - mobile */}
-        <div className={clsx('lg:hidden fixed z-40 transition-transform duration-300', mobileOpen ? 'translate-x-0' : '-translate-x-full')}>
+        <div className={clsx('lg:hidden fixed left-0 top-0 z-40 transition-transform duration-300', mobileOpen ? 'translate-x-0' : '-translate-x-full')}>
           <Sidebar collapsed={false} onToggle={() => setMobileOpen(false)} />
         </div>
 
