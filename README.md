@@ -206,15 +206,14 @@ go run cmd/server/main.go    # http://localhost:3000
 - **PDF Preview**: template invoice profesional langsung di browser
 - **Cetak/Download PDF**: via browser print (Ctrl+P) dengan format A4
 - **Terbilang**: angka otomatis dikonversi ke kata (ID & EN)
-- **Approve/Reject**: FINANCE/OWNER bisa approve/reject dengan konfirmasi
+- **Approve/Reject**: OWNER bisa approve/reject invoice yang dibuat FINANCE
 - **Auto invoice number**: format `001/INV/{KODE}/{MM}/{YYYY}` (dari company settings)
 
 ### 5. Pengeluaran (Expenses)
-- Catat pengeluaran dengan kategori dan upload bukti
+- Catat pengeluaran langsung tanpa perlu approval (budget sudah dialokasikan)
 - Kategori: Supplies, Equipment, Travel, Marketing, Office, Lainnya
-- Filter, approve/reject, dan delete dengan konfirmasi dialog
-- Approve expense otomatis menambah `spent_amount` di project budget
-- Validasi ukuran file upload (max 5MB)
+- Upload bukti pengeluaran (JPG, PNG, PDF max 5MB)
+- Hapus pengeluaran milik sendiri dengan konfirmasi dialog
 
 ### 6. Budget Request
 - Ajukan permintaan tambahan budget untuk proyek
@@ -252,12 +251,11 @@ go run cmd/server/main.go    # http://localhost:3000
 | Fitur | SPV | FINANCE | OWNER |
 |-------|:---:|:-------:|:-----:|
 | Dashboard | ✅ | ✅ | ✅ |
-| Buat Invoice | ✅ | - | - |
-| Lihat/Detail Invoice | ✅ | ✅ | ✅ |
-| Cetak Invoice PDF | ✅ | ✅ | ✅ |
-| Approve/Reject Invoice | - | ✅ | ✅ |
+| Buat Invoice | - | ✅ | - |
+| Lihat/Detail Invoice | - | ✅ | ✅ |
+| Cetak Invoice PDF | - | ✅ | ✅ |
+| Approve/Reject Invoice | - | - | ✅ |
 | Buat Pengeluaran | ✅ | ✅ | ✅ |
-| Approve/Reject Pengeluaran | - | ✅ | ✅ |
 | Hapus Pengeluaran (milik sendiri) | ✅ | ✅ | ✅ |
 | Buat Proyek | - | ✅ | ✅ |
 | Edit Proyek | - | ✅ | ✅ |
@@ -338,9 +336,9 @@ Invoice PDF mengikuti template profesional dengan elemen:
 ### Alur Invoice
 
 ```
-SPV buat invoice (PENDING) → FINANCE/OWNER review
-  ├── APPROVE → status = APPROVED, notifikasi ke SPV
-  └── REJECT  → status = REJECTED + alasan, notifikasi ke SPV
+FINANCE buat invoice (PENDING) → OWNER review
+  ├── APPROVE → status = APPROVED, notifikasi ke FINANCE
+  └── REJECT  → status = REJECTED + alasan, notifikasi ke FINANCE
 ```
 
 ---
@@ -374,11 +372,11 @@ Semua endpoint menggunakan prefix `/api`. Autentikasi via header `Authorization:
 |--------|----------|------|-----------|
 | `GET` | `/invoices` | All | List invoice (SPV: hanya project member) |
 | `GET` | `/invoices/:id` | All | Detail invoice + items |
-| `POST` | `/invoices` | SPV | Buat invoice dengan items |
-| `PUT` | `/invoices/:id` | SPV | Update invoice (hanya PENDING) |
-| `DELETE` | `/invoices/:id` | SPV | Hapus invoice (hanya PENDING) |
-| `POST` | `/invoices/:id/approve` | FINANCE, OWNER | Approve invoice |
-| `POST` | `/invoices/:id/reject` | FINANCE, OWNER | Reject invoice (notes wajib min 5 char) |
+| `POST` | `/invoices` | FINANCE | Buat invoice dengan items |
+| `PUT` | `/invoices/:id` | FINANCE | Update invoice (hanya PENDING) |
+| `DELETE` | `/invoices/:id` | FINANCE | Hapus invoice (hanya PENDING) |
+| `POST` | `/invoices/:id/approve` | OWNER | Approve invoice |
+| `POST` | `/invoices/:id/reject` | OWNER | Reject invoice (notes wajib min 5 char) |
 
 **Create Invoice Body:**
 ```json
@@ -411,11 +409,9 @@ Semua endpoint menggunakan prefix `/api`. Autentikasi via header `Authorization:
 |--------|----------|------|-----------|
 | `GET` | `/expenses` | All | List pengeluaran |
 | `GET` | `/expenses/:id` | All | Detail pengeluaran |
-| `POST` | `/expenses` | All | Buat pengeluaran |
-| `PUT` | `/expenses/:id` | All | Update (hanya PENDING) |
-| `DELETE` | `/expenses/:id` | All | Hapus (hanya PENDING, milik sendiri) |
-| `POST` | `/expenses/:id/approve` | FINANCE, OWNER | Approve (+ update budget) |
-| `POST` | `/expenses/:id/reject` | FINANCE, OWNER | Reject |
+| `POST` | `/expenses` | All | Buat pengeluaran (langsung tercatat, tanpa approval) |
+| `PUT` | `/expenses/:id` | All | Update (milik sendiri) |
+| `DELETE` | `/expenses/:id` | All | Hapus (milik sendiri) |
 
 ### Budget Requests
 
