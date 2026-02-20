@@ -5,14 +5,11 @@ import {
   useGetExpensesQuery,
   useCreateExpenseMutation,
   useDeleteExpenseMutation,
-  useApproveExpenseMutation,
-  useRejectExpenseMutation,
 } from '@/lib/api/expenseApi';
 import { useUploadFileMutation } from '@/lib/api/uploadApi';
 import { useGetProjectsQuery } from '@/lib/api/projectApi';
 import { useAppSelector } from '@/lib/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -21,7 +18,6 @@ import {
   Plus,
   Receipt,
   CheckCircle,
-  XCircle,
   Trash2,
   Upload,
   ExternalLink,
@@ -36,23 +32,14 @@ export default function ExpensesPage() {
   const { data: projectsData } = useGetProjectsQuery();
   const [createExpense, { isLoading: creating }] = useCreateExpenseMutation();
   const [deleteExpense] = useDeleteExpenseMutation();
-  const [approveExpense] = useApproveExpenseMutation();
-  const [rejectExpense] = useRejectExpenseMutation();
   const [uploadFile, { isLoading: uploading }] = useUploadFileMutation();
 
   const [showModal, setShowModal] = useState(false);
-  const [rejectModal, setRejectModal] = useState<number | null>(null);
-  const [rejectNotes, setRejectNotes] = useState('');
   const [form, setForm] = useState({ project_id: '', description: '', amount: '', category: '', receipt_url: '' });
-  const [filterStatus, setFilterStatus] = useState<string>('ALL');
-  const [confirmApprove, setConfirmApprove] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
-  const canApprove = user?.role === 'FINANCE' || user?.role === 'OWNER';
   const expenses = data?.data || [];
   const projects = projectsData?.data || [];
-
-  const filtered = filterStatus === 'ALL' ? expenses : expenses.filter((e) => e.status === filterStatus);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -94,35 +81,6 @@ export default function ExpensesPage() {
     }
   };
 
-  const handleApprove = async () => {
-    if (confirmApprove === null) return;
-    try {
-      await approveExpense({ id: confirmApprove }).unwrap();
-      toast.success('Pengeluaran disetujui!');
-      setConfirmApprove(null);
-    } catch (err: unknown) {
-      const error = err as { data?: { message?: string } };
-      toast.error(error?.data?.message || 'Gagal menyetujui');
-    }
-  };
-
-  const handleReject = async () => {
-    if (rejectModal === null) return;
-    if (rejectNotes.trim().length < 5) {
-      toast.error('Alasan penolakan minimal 5 karakter');
-      return;
-    }
-    try {
-      await rejectExpense({ id: rejectModal, body: { notes: rejectNotes } }).unwrap();
-      toast.success('Pengeluaran ditolak');
-      setRejectModal(null);
-      setRejectNotes('');
-    } catch (err: unknown) {
-      const error = err as { data?: { message?: string } };
-      toast.error(error?.data?.message || 'Gagal menolak');
-    }
-  };
-
   const handleDelete = async () => {
     if (confirmDelete === null) return;
     try {
@@ -145,30 +103,18 @@ export default function ExpensesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Daftar Pengeluaran</h2>
-          <p className="text-sm text-slate-500 mt-1">{filtered.length} pengeluaran</p>
+          <p className="text-sm text-slate-500 mt-1">{expenses.length} pengeluaran</p>
         </div>
-        <div className="flex items-center gap-3">
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-          >
-            <option value="ALL">Semua Status</option>
-            <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
-          >
-            <Plus size={18} />
-            Tambah
-          </button>
-        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
+        >
+          <Plus size={18} />
+          Tambah
+        </button>
       </div>
 
-      {filtered.length === 0 ? (
+      {expenses.length === 0 ? (
         <EmptyState title="Belum ada pengeluaran" description="Pengeluaran yang dibuat akan muncul di sini" />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
@@ -180,13 +126,12 @@ export default function ExpensesPage() {
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Proyek</th>
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Kategori</th>
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Jumlah</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Status</th>
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Tanggal</th>
                   <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {filtered.map((exp) => (
+                {expenses.map((exp) => (
                   <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -199,7 +144,6 @@ export default function ExpensesPage() {
                       <span className="text-xs font-medium px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600">{exp.category}</span>
                     </td>
                     <td className="px-6 py-4 text-sm font-semibold text-slate-900">{formatCurrency(exp.amount)}</td>
-                    <td className="px-6 py-4"><Badge status={exp.status} /></td>
                     <td className="px-6 py-4 text-sm text-slate-500">{formatDate(exp.created_at)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-1">
@@ -213,25 +157,7 @@ export default function ExpensesPage() {
                             <ExternalLink size={16} />
                           </a>
                         )}
-                        {canApprove && exp.status === 'PENDING' && (
-                          <>
-                            <button
-                              onClick={() => setConfirmApprove(exp.id)}
-                              className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
-                              title="Approve"
-                            >
-                              <CheckCircle size={18} />
-                            </button>
-                            <button
-                              onClick={() => setRejectModal(exp.id)}
-                              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
-                              title="Reject"
-                            >
-                              <XCircle size={18} />
-                            </button>
-                          </>
-                        )}
-                        {exp.status === 'PENDING' && exp.created_by === user?.id && (
+                        {exp.created_by === user?.id && (
                           <button
                             onClick={() => setConfirmDelete(exp.id)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
@@ -340,54 +266,6 @@ export default function ExpensesPage() {
           </div>
         </form>
       </Modal>
-
-      {/* Reject Modal */}
-      <Modal isOpen={rejectModal !== null} onClose={() => setRejectModal(null)} title="Tolak Pengeluaran" size="sm">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Alasan Penolakan <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              required
-              value={rejectNotes}
-              onChange={(e) => setRejectNotes(e.target.value)}
-              placeholder="Jelaskan alasan penolakan (min. 5 karakter)..."
-              rows={3}
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
-            />
-            {rejectNotes.length > 0 && rejectNotes.trim().length < 5 && (
-              <p className="text-xs text-red-500 mt-1">Minimal 5 karakter</p>
-            )}
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => { setRejectModal(null); setRejectNotes(''); }}
-              className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors"
-            >
-              Batal
-            </button>
-            <button
-              onClick={handleReject}
-              disabled={rejectNotes.trim().length < 5}
-              className="flex-1 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
-            >
-              Tolak
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Confirm Approve */}
-      <ConfirmDialog
-        isOpen={confirmApprove !== null}
-        onClose={() => setConfirmApprove(null)}
-        onConfirm={handleApprove}
-        title="Setujui Pengeluaran?"
-        message="Pengeluaran yang disetujui akan mengurangi budget proyek."
-        confirmLabel="Setujui"
-        variant="warning"
-      />
 
       {/* Confirm Delete */}
       <ConfirmDialog
