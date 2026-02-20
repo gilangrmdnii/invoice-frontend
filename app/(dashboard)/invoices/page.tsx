@@ -196,7 +196,7 @@ export default function InvoicesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Daftar Invoice</h2>
           <p className="text-sm text-slate-500 mt-1">{filtered.length} invoice</p>
@@ -309,7 +309,7 @@ export default function InvoicesPage() {
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title="Buat Invoice Baru" size="lg">
         <form onSubmit={handleCreate} className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
           {/* Row 1: Project + Type */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Proyek *</label>
               <select
@@ -340,7 +340,7 @@ export default function InvoicesPage() {
           </div>
 
           {/* Row 2: Recipient */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Nama Penerima *</label>
               <input
@@ -374,7 +374,7 @@ export default function InvoicesPage() {
           </div>
 
           {/* Row 3: PO, Date, Language */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">No. PO</label>
               <input
@@ -419,8 +419,8 @@ export default function InvoicesPage() {
                 + Tambah Item
               </button>
             </div>
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="border border-slate-200 rounded-xl overflow-x-auto">
+              <table className="w-full text-sm min-w-[500px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500">Keterangan</th>
@@ -490,7 +490,7 @@ export default function InvoicesPage() {
           </div>
 
           {/* Totals */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-3">
               {(form.invoice_type === 'DP' || form.invoice_type === 'FINAL_PAYMENT') && (
                 <div>

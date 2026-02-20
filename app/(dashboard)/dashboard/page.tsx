@@ -30,11 +30,11 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Budget Overview */}
-      <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 rounded-2xl p-6 text-white">
+      <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 rounded-2xl p-4 sm:p-6 text-white">
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-indigo-200 text-sm font-medium">Total Anggaran</p>
-            <p className="text-3xl font-bold mt-1">{formatCurrency(d.budget.total_budget)}</p>
+            <p className="text-2xl sm:text-3xl font-bold mt-1">{formatCurrency(d.budget.total_budget)}</p>
           </div>
           <div className="w-14 h-14 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center">
             <Wallet className="w-7 h-7" />

@@ -82,7 +82,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   return (
     <div>
       {/* Top bar */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors">
           <ArrowLeft size={18} />
           Kembali
@@ -94,13 +94,14 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
           >
             <Printer size={16} />
-            Cetak / Download PDF
+            <span className="hidden sm:inline">Cetak / Download PDF</span>
+            <span className="sm:hidden">Cetak PDF</span>
           </button>
         </div>
       </div>
 
       {/* Invoice Preview */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-8 shadow-sm">
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-8 shadow-sm overflow-x-auto">
         <div ref={printRef}>
           <div className="invoice-container">
             {/* Header */}

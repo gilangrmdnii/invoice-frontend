@@ -84,8 +84,8 @@ export default function ProjectDetailPage() {
   return (
     <div className="space-y-6">
       {/* Project Header */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-100">
-        <div className="flex items-start justify-between mb-4">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h2 className="text-xl font-bold text-slate-900">{project.name}</h2>
@@ -144,7 +144,7 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Members */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-100">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-100">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Users size={18} className="text-slate-400" />

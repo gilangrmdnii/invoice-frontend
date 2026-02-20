@@ -76,7 +76,7 @@ export default function NotificationsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Notifikasi</h2>
           <p className="text-sm text-slate-500 mt-1">{notifications.length} notifikasi</p>
@@ -105,7 +105,7 @@ export default function NotificationsPage() {
                 key={notif.id}
                 onClick={() => handleClick(notif)}
                 className={clsx(
-                  'flex items-start gap-4 px-6 py-4 transition-colors cursor-pointer',
+                  'flex items-start gap-3 sm:gap-4 px-4 sm:px-6 py-4 transition-colors cursor-pointer',
                   notif.is_read ? 'bg-white hover:bg-slate-50' : 'bg-indigo-50/40 hover:bg-indigo-50/60'
                 )}
               >

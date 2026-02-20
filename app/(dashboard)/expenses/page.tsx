@@ -142,7 +142,7 @@ export default function ExpensesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Daftar Pengeluaran</h2>
           <p className="text-sm text-slate-500 mt-1">{filtered.length} pengeluaran</p>
@@ -253,7 +253,7 @@ export default function ExpensesPage() {
       {/* Create Modal */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Tambah Pengeluaran" size="lg">
         <form onSubmit={handleCreate} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Proyek</label>
               <select

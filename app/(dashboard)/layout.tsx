@@ -36,7 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Main Content */}
         <div className={clsx('transition-all duration-300', collapsed ? 'lg:ml-[72px]' : 'lg:ml-64')}>
           <Header onMenuClick={() => setMobileOpen(true)} />
-          <main className="p-6">{children}</main>
+          <main className="px-4 py-5 sm:p-6">{children}</main>
         </div>
       </div>
     </AuthGuard>

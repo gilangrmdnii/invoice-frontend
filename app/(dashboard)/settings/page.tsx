@@ -115,7 +115,7 @@ export default function SettingsPage() {
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Company Info */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6">
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6">
           <h3 className="text-sm font-semibold text-slate-800 mb-4">Informasi Perusahaan</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -201,7 +201,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Bank Info */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6">
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6">
           <h3 className="text-sm font-semibold text-slate-800 mb-4">Informasi Bank</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -244,7 +244,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Signatory */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6">
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6">
           <h3 className="text-sm font-semibold text-slate-800 mb-4">Penandatangan Invoice</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
