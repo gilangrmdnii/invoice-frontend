@@ -39,16 +39,19 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/projects', label: 'Proyek', icon: FolderKanban },
-    { href: '/invoices', label: 'Invoice', icon: FileText },
+    ...(user?.role === 'FINANCE' || user?.role === 'OWNER'
+      ? [{ href: '/invoices', label: 'Invoice', icon: FileText }]
+      : []),
     { href: '/expenses', label: 'Pengeluaran', icon: Receipt },
     { href: '/budget-requests', label: 'Budget Request', icon: Wallet },
     { href: '/notifications', label: 'Notifikasi', icon: Bell },
+    ...(user?.role === 'FINANCE' || user?.role === 'OWNER'
+      ? [
+          { href: '/audit-logs', label: 'Audit Log', icon: ScrollText },
+          { href: '/settings', label: 'Pengaturan', icon: Settings },
+        ]
+      : []),
   ];
-
-  if (user?.role === 'FINANCE' || user?.role === 'OWNER') {
-    navItems.push({ href: '/audit-logs', label: 'Audit Log', icon: ScrollText });
-    navItems.push({ href: '/settings', label: 'Pengaturan', icon: Settings });
-  }
 
   return (
     <aside

@@ -71,8 +71,8 @@ export default function InvoicesPage() {
   });
   const [items, setItems] = useState<Omit<InvoiceItem, 'id' | 'invoice_id' | 'sort_order'>[]>([{ ...EMPTY_ITEM }]);
 
-  const canCreate = user?.role === 'SPV';
-  const canApprove = user?.role === 'FINANCE' || user?.role === 'OWNER';
+  const canCreate = user?.role === 'FINANCE';
+  const canApprove = user?.role === 'OWNER';
   const invoices = data?.data || [];
   const projects = projectsData?.data || [];
 
