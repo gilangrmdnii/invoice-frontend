@@ -47,11 +47,7 @@ export default function NotificationsPage() {
     // Navigate to related resource
     const type = notif.type.toUpperCase();
     if (type.includes('INVOICE') && notif.reference_id) {
-      router.push('/invoices');
-    } else if (type.includes('EXPENSE') && notif.reference_id) {
-      router.push('/expenses');
-    } else if (type.includes('BUDGET') && notif.reference_id) {
-      router.push('/budget-requests');
+      router.push(`/invoices/${notif.reference_id}`);
     }
   };
 

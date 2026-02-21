@@ -178,16 +178,53 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, idx) => (
-                  <tr key={item.id || idx} style={{ background: idx % 2 === 1 ? '#f8fafc' : 'white' }}>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11 }}>{idx + 1}</td>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11 }}>{item.description}</td>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'right' }}>{formatNumber(item.unit_price)}</td>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'center' }}>{item.quantity}</td>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'center' }}>{item.unit}</td>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'right', fontWeight: 600 }}>{formatNumber(item.subtotal)}</td>
-                  </tr>
-                ))}
+                {(() => {
+                  // Build ordered rows: labels as section headers, children indented, standalone items numbered
+                  const labels = items.filter((i) => i.is_label);
+                  const standaloneItems = items.filter((i) => !i.is_label && !i.parent_id);
+                  const rows: React.ReactNode[] = [];
+                  let counter = 1;
+
+                  // Render labels with their children
+                  labels.forEach((label) => {
+                    const children = items.filter((i) => i.parent_id === label.id);
+                    rows.push(
+                      <tr key={`label-${label.id}`} style={{ background: '#f1f5f9' }}>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, fontWeight: 700 }} colSpan={6}>
+                          {label.description}
+                        </td>
+                      </tr>
+                    );
+                    children.forEach((child, cIdx) => {
+                      rows.push(
+                        <tr key={child.id || `child-${label.id}-${cIdx}`} style={{ background: cIdx % 2 === 1 ? '#f8fafc' : 'white' }}>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, paddingLeft: 20 }}>{counter++}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, paddingLeft: 20 }}>{child.description}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'right' }}>{formatNumber(child.unit_price)}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'center' }}>{child.quantity}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'center' }}>{child.unit}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'right', fontWeight: 600 }}>{formatNumber(child.subtotal)}</td>
+                        </tr>
+                      );
+                    });
+                  });
+
+                  // Render standalone items
+                  standaloneItems.forEach((item, idx) => {
+                    rows.push(
+                      <tr key={item.id || `item-${idx}`} style={{ background: idx % 2 === 1 ? '#f8fafc' : 'white' }}>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11 }}>{counter++}</td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11 }}>{item.description}</td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'right' }}>{formatNumber(item.unit_price)}</td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'center' }}>{item.quantity}</td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'center' }}>{item.unit}</td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'right', fontWeight: 600 }}>{formatNumber(item.subtotal)}</td>
+                      </tr>
+                    );
+                  });
+
+                  return rows;
+                })()}
               </tbody>
             </table>
 

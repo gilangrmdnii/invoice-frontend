@@ -10,8 +10,6 @@ import {
   LayoutDashboard,
   FolderKanban,
   FileText,
-  Receipt,
-  Wallet,
   Bell,
   ScrollText,
   Settings,
@@ -39,11 +37,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/projects', label: 'Proyek', icon: FolderKanban },
-    ...(user?.role === 'FINANCE' || user?.role === 'OWNER'
-      ? [{ href: '/invoices', label: 'Invoice', icon: FileText }]
-      : []),
-    { href: '/expenses', label: 'Pengeluaran', icon: Receipt },
-    { href: '/budget-requests', label: 'Budget Request', icon: Wallet },
     { href: '/notifications', label: 'Notifikasi', icon: Bell },
     ...(user?.role === 'FINANCE' || user?.role === 'OWNER'
       ? [

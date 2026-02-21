@@ -7,7 +7,6 @@ import {
   useApproveBudgetRequestMutation,
   useRejectBudgetRequestMutation,
 } from '@/lib/api/budgetRequestApi';
-import { useGetProjectsQuery } from '@/lib/api/projectApi';
 import { useAppSelector } from '@/lib/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
@@ -18,23 +17,26 @@ import EmptyState from '@/components/ui/EmptyState';
 import { Plus, Wallet, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export default function BudgetRequestsPage() {
+interface BudgetRequestTabProps {
+  projectId: number;
+}
+
+export default function BudgetRequestTab({ projectId }: BudgetRequestTabProps) {
   const user = useAppSelector((s) => s.auth.user);
   const { data, isLoading, isError } = useGetBudgetRequestsQuery();
-  const { data: projectsData } = useGetProjectsQuery();
   const [createRequest, { isLoading: creating }] = useCreateBudgetRequestMutation();
   const [approveRequest] = useApproveBudgetRequestMutation();
   const [rejectRequest] = useRejectBudgetRequestMutation();
 
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ project_id: '', amount: '', reason: '' });
+  const [form, setForm] = useState({ amount: '', reason: '' });
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [confirmApprove, setConfirmApprove] = useState<number | null>(null);
   const [confirmReject, setConfirmReject] = useState<number | null>(null);
 
   const canApprove = user?.role === 'FINANCE' || user?.role === 'OWNER';
-  const requests = data?.data || [];
-  const projects = projectsData?.data || [];
+  const allRequests = data?.data || [];
+  const requests = allRequests.filter((r) => r.project_id === projectId);
 
   const filtered = filterStatus === 'ALL' ? requests : requests.filter((r) => r.status === filterStatus);
 
@@ -42,13 +44,13 @@ export default function BudgetRequestsPage() {
     e.preventDefault();
     try {
       await createRequest({
-        project_id: Number(form.project_id),
+        project_id: projectId,
         amount: Number(form.amount),
         reason: form.reason,
       }).unwrap();
       toast.success('Budget request berhasil dibuat!');
       setShowModal(false);
-      setForm({ project_id: '', amount: '', reason: '' });
+      setForm({ amount: '', reason: '' });
     } catch (err: unknown) {
       const error = err as { data?: { message?: string } };
       toast.error(error?.data?.message || 'Gagal membuat request');
@@ -122,9 +124,6 @@ export default function BudgetRequestsPage() {
                 </div>
                 <Badge status={req.status} />
               </div>
-              <p className="text-sm font-medium text-slate-900 mb-1">
-                {req.project?.name || `Project #${req.project_id}`}
-              </p>
               <p className="text-2xl font-bold text-slate-900 mb-2">{formatCurrency(req.amount)}</p>
               <p className="text-sm text-slate-500 mb-4 line-clamp-2">{req.reason}</p>
               <div className="flex items-center justify-between">
@@ -156,23 +155,9 @@ export default function BudgetRequestsPage() {
         </div>
       )}
 
-      {/* Create Modal */}
+      {/* Create Modal — no project selector */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Ajukan Budget Request">
         <form onSubmit={handleCreate} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Proyek</label>
-            <select
-              required
-              value={form.project_id}
-              onChange={(e) => setForm({ ...form, project_id: e.target.value })}
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-            >
-              <option value="">Pilih proyek...</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Jumlah (Rp)</label>
             <input

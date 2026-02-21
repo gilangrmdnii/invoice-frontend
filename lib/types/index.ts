@@ -83,6 +83,8 @@ export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
 export interface InvoiceItem {
   id?: number;
   invoice_id?: number;
+  parent_id?: number | null;
+  is_label?: boolean;
   description: string;
   quantity: number;
   unit: string;
@@ -118,6 +120,11 @@ export interface Invoice {
   updated_at: string;
 }
 
+export interface InvoiceLabelRequest {
+  description: string;
+  items: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[];
+}
+
 export interface CreateInvoiceRequest {
   project_id: number;
   invoice_type: InvoiceType;
@@ -131,7 +138,8 @@ export interface CreateInvoiceRequest {
   notes?: string;
   language: 'ID' | 'EN';
   file_url?: string;
-  items: Omit<InvoiceItem, 'id' | 'invoice_id' | 'sort_order'>[];
+  items?: Omit<InvoiceItem, 'id' | 'invoice_id' | 'sort_order'>[];
+  labels?: InvoiceLabelRequest[];
 }
 
 export interface UpdateInvoiceRequest {
@@ -146,6 +154,7 @@ export interface UpdateInvoiceRequest {
   language?: 'ID' | 'EN';
   file_url?: string;
   items?: Omit<InvoiceItem, 'id' | 'invoice_id' | 'sort_order'>[];
+  labels?: InvoiceLabelRequest[];
 }
 
 // ==================== Company Settings ====================

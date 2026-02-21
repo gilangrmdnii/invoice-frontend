@@ -9,10 +9,9 @@ import {
   useApproveInvoiceMutation,
   useRejectInvoiceMutation,
 } from '@/lib/api/invoiceApi';
-import { useGetProjectsQuery } from '@/lib/api/projectApi';
 import { useAppSelector } from '@/lib/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import type { InvoiceType, InvoiceItem } from '@/lib/types';
+import type { InvoiceType } from '@/lib/types';
 import { INVOICE_TYPE_LABELS } from '@/lib/types';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
@@ -27,22 +26,39 @@ import {
   Trash2,
   Eye,
   X,
+  Tag,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const EMPTY_ITEM: Omit<InvoiceItem, 'id' | 'invoice_id' | 'sort_order'> = {
+// ============ Types for form state ============
+
+interface FormItem {
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+}
+
+interface LabelGroup {
+  label: string;
+  items: FormItem[];
+}
+
+const EMPTY_FORM_ITEM: FormItem = {
   description: '',
   quantity: 1,
   unit: 'unit',
   unit_price: 0,
-  subtotal: 0,
 };
 
-export default function InvoicesPage() {
+interface InvoiceTabProps {
+  projectId: number;
+}
+
+export default function InvoiceTab({ projectId }: InvoiceTabProps) {
   const user = useAppSelector((s) => s.auth.user);
   const router = useRouter();
   const { data, isLoading, isError } = useGetInvoicesQuery();
-  const { data: projectsData } = useGetProjectsQuery();
   const [createInvoice, { isLoading: creating }] = useCreateInvoiceMutation();
   const [deleteInvoice] = useDeleteInvoiceMutation();
   const [approveInvoice] = useApproveInvoiceMutation();
@@ -57,7 +73,6 @@ export default function InvoicesPage() {
 
   // Form state
   const [form, setForm] = useState({
-    project_id: '',
     invoice_type: 'DP' as InvoiceType,
     recipient_name: '',
     recipient_address: '',
@@ -69,36 +84,64 @@ export default function InvoicesPage() {
     notes: '',
     language: 'ID' as 'ID' | 'EN',
   });
-  const [items, setItems] = useState<Omit<InvoiceItem, 'id' | 'invoice_id' | 'sort_order'>[]>([{ ...EMPTY_ITEM }]);
+
+  // Label groups (each label has child items)
+  const [labelGroups, setLabelGroups] = useState<LabelGroup[]>([
+    { label: '', items: [{ ...EMPTY_FORM_ITEM }] },
+  ]);
 
   const canCreate = user?.role === 'FINANCE';
   const canApprove = user?.role === 'OWNER';
-  const invoices = data?.data || [];
-  const projects = projectsData?.data || [];
-
+  const allInvoices = data?.data || [];
+  const invoices = allInvoices.filter((inv) => inv.project_id === projectId);
   const filtered = filterStatus === 'ALL' ? invoices : invoices.filter((i) => i.status === filterStatus);
 
-  const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+  // Calculate totals from all items in all groups
+  const allItems = labelGroups.flatMap((g) => g.items);
+  const subtotal = allItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
   const taxAmount = subtotal * Number(form.tax_percentage || 0) / 100;
   const total = subtotal + taxAmount;
 
-  const addItem = () => setItems([...items, { ...EMPTY_ITEM }]);
-  const removeItem = (idx: number) => {
-    if (items.length <= 1) return;
-    setItems(items.filter((_, i) => i !== idx));
+  // ============ Label/Item CRUD ============
+
+  const addLabelGroup = () => {
+    setLabelGroups([...labelGroups, { label: '', items: [{ ...EMPTY_FORM_ITEM }] }]);
   };
-  const updateItem = (idx: number, field: string, value: string | number) => {
-    const updated = [...items];
-    updated[idx] = { ...updated[idx], [field]: value };
-    if (field === 'quantity' || field === 'unit_price') {
-      updated[idx].subtotal = Number(updated[idx].quantity) * Number(updated[idx].unit_price);
-    }
-    setItems(updated);
+
+  const removeLabelGroup = (gIdx: number) => {
+    if (labelGroups.length <= 1) return;
+    setLabelGroups(labelGroups.filter((_, i) => i !== gIdx));
+  };
+
+  const updateLabel = (gIdx: number, value: string) => {
+    const updated = [...labelGroups];
+    updated[gIdx] = { ...updated[gIdx], label: value };
+    setLabelGroups(updated);
+  };
+
+  const addItemToGroup = (gIdx: number) => {
+    const updated = [...labelGroups];
+    updated[gIdx] = { ...updated[gIdx], items: [...updated[gIdx].items, { ...EMPTY_FORM_ITEM }] };
+    setLabelGroups(updated);
+  };
+
+  const removeItemFromGroup = (gIdx: number, iIdx: number) => {
+    const updated = [...labelGroups];
+    if (updated[gIdx].items.length <= 1) return;
+    updated[gIdx] = { ...updated[gIdx], items: updated[gIdx].items.filter((_, i) => i !== iIdx) };
+    setLabelGroups(updated);
+  };
+
+  const updateGroupItem = (gIdx: number, iIdx: number, field: string, value: string | number) => {
+    const updated = [...labelGroups];
+    const items = [...updated[gIdx].items];
+    items[iIdx] = { ...items[iIdx], [field]: value };
+    updated[gIdx] = { ...updated[gIdx], items };
+    setLabelGroups(updated);
   };
 
   const resetForm = () => {
     setForm({
-      project_id: '',
       invoice_type: 'DP',
       recipient_name: '',
       recipient_address: '',
@@ -110,19 +153,43 @@ export default function InvoicesPage() {
       notes: '',
       language: 'ID',
     });
-    setItems([{ ...EMPTY_ITEM }]);
+    setLabelGroups([{ label: '', items: [{ ...EMPTY_FORM_ITEM }] }]);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validItems = items.filter((i) => i.description && i.unit_price > 0);
-    if (validItems.length === 0) {
+
+    // Separate labels (groups with label text) from standalone items (groups without label)
+    const labels: { description: string; items: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[] }[] = [];
+    const standaloneItems: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[] = [];
+
+    for (const group of labelGroups) {
+      const validItems = group.items.filter((i) => i.description && i.unit_price > 0);
+      if (validItems.length === 0) continue;
+
+      const mappedItems = validItems.map((i) => ({
+        description: i.description,
+        quantity: Number(i.quantity),
+        unit: i.unit,
+        unit_price: Number(i.unit_price),
+        subtotal: Number(i.quantity) * Number(i.unit_price),
+      }));
+
+      if (group.label.trim()) {
+        labels.push({ description: group.label.trim(), items: mappedItems });
+      } else {
+        standaloneItems.push(...mappedItems);
+      }
+    }
+
+    if (labels.length === 0 && standaloneItems.length === 0) {
       toast.error('Tambahkan minimal 1 item invoice');
       return;
     }
+
     try {
       await createInvoice({
-        project_id: Number(form.project_id),
+        project_id: projectId,
         invoice_type: form.invoice_type,
         recipient_name: form.recipient_name,
         recipient_address: form.recipient_address,
@@ -133,13 +200,8 @@ export default function InvoicesPage() {
         tax_percentage: Number(form.tax_percentage || 0),
         notes: form.notes,
         language: form.language,
-        items: validItems.map((i) => ({
-          description: i.description,
-          quantity: Number(i.quantity),
-          unit: i.unit,
-          unit_price: Number(i.unit_price),
-          subtotal: Number(i.quantity) * Number(i.unit_price),
-        })),
+        items: standaloneItems.length > 0 ? standaloneItems : undefined,
+        labels: labels.length > 0 ? labels : undefined,
       }).unwrap();
       toast.success('Invoice berhasil dibuat!');
       setShowModal(false);
@@ -308,35 +370,19 @@ export default function InvoicesPage() {
       {/* Create Modal */}
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title="Buat Invoice Baru" size="lg">
         <form onSubmit={handleCreate} className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
-          {/* Row 1: Project + Type */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Proyek *</label>
-              <select
-                required
-                value={form.project_id}
-                onChange={(e) => setForm({ ...form, project_id: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              >
-                <option value="">Pilih proyek...</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Tipe Invoice *</label>
-              <select
-                required
-                value={form.invoice_type}
-                onChange={(e) => setForm({ ...form, invoice_type: e.target.value as InvoiceType })}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              >
-                {(Object.keys(INVOICE_TYPE_LABELS) as InvoiceType[]).map((type) => (
-                  <option key={type} value={type}>{INVOICE_TYPE_LABELS[type]}</option>
-                ))}
-              </select>
-            </div>
+          {/* Row 1: Type */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Tipe Invoice *</label>
+            <select
+              required
+              value={form.invoice_type}
+              onChange={(e) => setForm({ ...form, invoice_type: e.target.value as InvoiceType })}
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            >
+              {(Object.keys(INVOICE_TYPE_LABELS) as InvoiceType[]).map((type) => (
+                <option key={type} value={type}>{INVOICE_TYPE_LABELS[type]}</option>
+              ))}
+            </select>
           </div>
 
           {/* Row 2: Recipient */}
@@ -407,85 +453,122 @@ export default function InvoicesPage() {
             </div>
           </div>
 
-          {/* Line Items */}
+          {/* ============ Label Groups + Items ============ */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-medium text-slate-700">Item Invoice *</label>
               <button
                 type="button"
-                onClick={addItem}
-                className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                onClick={addLabelGroup}
+                className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700"
               >
-                + Tambah Item
+                <Tag size={12} />
+                + Tambah Label
               </button>
             </div>
-            <div className="border border-slate-200 rounded-xl overflow-x-auto">
-              <table className="w-full text-sm min-w-[500px]">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500">Keterangan</th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 w-20">Qty</th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 w-20">Unit</th>
-                    <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 w-32">Harga</th>
-                    <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 w-32">Subtotal</th>
-                    <th className="w-8"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item, idx) => (
-                    <tr key={idx} className="border-b border-slate-100">
-                      <td className="px-2 py-1.5">
-                        <input
-                          required
-                          value={item.description}
-                          onChange={(e) => updateItem(idx, 'description', e.target.value)}
-                          placeholder="Deskripsi item..."
-                          className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <input
-                          type="number"
-                          required
-                          min={0.01}
-                          step="any"
-                          value={item.quantity || ''}
-                          onChange={(e) => updateItem(idx, 'quantity', Number(e.target.value))}
-                          className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <input
-                          required
-                          value={item.unit}
-                          onChange={(e) => updateItem(idx, 'unit', e.target.value)}
-                          className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <input
-                          type="number"
-                          required
-                          min={1}
-                          value={item.unit_price || ''}
-                          onChange={(e) => updateItem(idx, 'unit_price', Number(e.target.value))}
-                          className="w-full px-2 py-1.5 text-sm text-right border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
-                        />
-                      </td>
-                      <td className="px-3 py-1.5 text-right text-sm font-medium text-slate-700">
-                        {formatCurrency(Number(item.quantity) * Number(item.unit_price))}
-                      </td>
-                      <td className="px-1 py-1.5">
-                        {items.length > 1 && (
-                          <button type="button" onClick={() => removeItem(idx)} className="p-1 text-slate-400 hover:text-red-500">
-                            <X size={14} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+            <div className="space-y-4">
+              {labelGroups.map((group, gIdx) => (
+                <div key={gIdx} className="border border-slate-200 rounded-xl overflow-hidden">
+                  {/* Label header */}
+                  <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 border-b border-slate-200">
+                    <Tag size={14} className="text-slate-400 shrink-0" />
+                    <input
+                      value={group.label}
+                      onChange={(e) => updateLabel(gIdx, e.target.value)}
+                      placeholder="Nama label (opsional, kosongkan jika tanpa label)..."
+                      className="flex-1 bg-transparent text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => addItemToGroup(gIdx)}
+                      className="text-xs font-medium text-indigo-600 hover:text-indigo-700 whitespace-nowrap"
+                    >
+                      + Item
+                    </button>
+                    {labelGroups.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeLabelGroup(gIdx)}
+                        className="p-1 text-slate-400 hover:text-red-500"
+                        title="Hapus label & semua item-nya"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Items table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[500px]">
+                      <thead>
+                        <tr className="bg-white border-b border-slate-100">
+                          <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500">Keterangan</th>
+                          <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 w-20">Qty</th>
+                          <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 w-20">Unit</th>
+                          <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 w-32">Harga</th>
+                          <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 w-32">Subtotal</th>
+                          <th className="w-8"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.items.map((item, iIdx) => (
+                          <tr key={iIdx} className="border-b border-slate-100">
+                            <td className="px-2 py-1.5">
+                              <input
+                                required
+                                value={item.description}
+                                onChange={(e) => updateGroupItem(gIdx, iIdx, 'description', e.target.value)}
+                                placeholder="Deskripsi item..."
+                                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input
+                                type="number"
+                                required
+                                min={0.01}
+                                step="any"
+                                value={item.quantity || ''}
+                                onChange={(e) => updateGroupItem(gIdx, iIdx, 'quantity', Number(e.target.value))}
+                                className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input
+                                required
+                                value={item.unit}
+                                onChange={(e) => updateGroupItem(gIdx, iIdx, 'unit', e.target.value)}
+                                className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input
+                                type="number"
+                                required
+                                min={1}
+                                value={item.unit_price || ''}
+                                onChange={(e) => updateGroupItem(gIdx, iIdx, 'unit_price', Number(e.target.value))}
+                                className="w-full px-2 py-1.5 text-sm text-right border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                              />
+                            </td>
+                            <td className="px-3 py-1.5 text-right text-sm font-medium text-slate-700">
+                              {formatCurrency(Number(item.quantity) * Number(item.unit_price))}
+                            </td>
+                            <td className="px-1 py-1.5">
+                              {group.items.length > 1 && (
+                                <button type="button" onClick={() => removeItemFromGroup(gIdx, iIdx)} className="p-1 text-slate-400 hover:text-red-500">
+                                  <X size={14} />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

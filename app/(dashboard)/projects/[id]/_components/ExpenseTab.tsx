@@ -7,7 +7,6 @@ import {
   useDeleteExpenseMutation,
 } from '@/lib/api/expenseApi';
 import { useUploadFileMutation } from '@/lib/api/uploadApi';
-import { useGetProjectsQuery } from '@/lib/api/projectApi';
 import { useAppSelector } from '@/lib/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
@@ -26,20 +25,23 @@ import toast from 'react-hot-toast';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-export default function ExpensesPage() {
+interface ExpenseTabProps {
+  projectId: number;
+}
+
+export default function ExpenseTab({ projectId }: ExpenseTabProps) {
   const user = useAppSelector((s) => s.auth.user);
   const { data, isLoading, isError } = useGetExpensesQuery();
-  const { data: projectsData } = useGetProjectsQuery();
   const [createExpense, { isLoading: creating }] = useCreateExpenseMutation();
   const [deleteExpense] = useDeleteExpenseMutation();
   const [uploadFile, { isLoading: uploading }] = useUploadFileMutation();
 
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ project_id: '', description: '', amount: '', category: '', receipt_url: '' });
+  const [form, setForm] = useState({ description: '', amount: '', category: '', receipt_url: '' });
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
-  const expenses = data?.data || [];
-  const projects = projectsData?.data || [];
+  const allExpenses = data?.data || [];
+  const expenses = allExpenses.filter((exp) => exp.project_id === projectId);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,7 +68,7 @@ export default function ExpensesPage() {
     e.preventDefault();
     try {
       await createExpense({
-        project_id: Number(form.project_id),
+        project_id: projectId,
         description: form.description,
         amount: Number(form.amount),
         category: form.category,
@@ -74,7 +76,7 @@ export default function ExpensesPage() {
       }).unwrap();
       toast.success('Pengeluaran berhasil ditambahkan!');
       setShowModal(false);
-      setForm({ project_id: '', description: '', amount: '', category: '', receipt_url: '' });
+      setForm({ description: '', amount: '', category: '', receipt_url: '' });
     } catch (err: unknown) {
       const error = err as { data?: { message?: string } };
       toast.error(error?.data?.message || 'Gagal menambahkan pengeluaran');
@@ -123,7 +125,6 @@ export default function ExpensesPage() {
               <thead>
                 <tr className="border-b border-slate-100">
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Deskripsi</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Proyek</th>
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Kategori</th>
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Jumlah</th>
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Tanggal</th>
@@ -139,7 +140,6 @@ export default function ExpensesPage() {
                         <span className="text-sm font-medium text-slate-900">{exp.description}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{exp.project?.name || `Project #${exp.project_id}`}</td>
                     <td className="px-6 py-4">
                       <span className="text-xs font-medium px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600">{exp.category}</span>
                     </td>
@@ -176,38 +176,22 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      {/* Create Modal */}
+      {/* Create Modal — no project selector */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Tambah Pengeluaran" size="lg">
         <form onSubmit={handleCreate} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Proyek</label>
-              <select
-                required
-                value={form.project_id}
-                onChange={(e) => setForm({ ...form, project_id: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              >
-                <option value="">Pilih proyek...</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Kategori</label>
-              <select
-                required
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              >
-                <option value="">Pilih kategori...</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Kategori</label>
+            <select
+              required
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            >
+              <option value="">Pilih kategori...</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Deskripsi</label>
