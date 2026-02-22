@@ -40,9 +40,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: '/notifications', label: 'Notifikasi', icon: Bell },
     ...(user?.role === 'FINANCE' || user?.role === 'OWNER'
       ? [
-          { href: '/audit-logs', label: 'Audit Log', icon: ScrollText },
-          { href: '/settings', label: 'Pengaturan', icon: Settings },
-        ]
+        { href: '/audit-logs', label: 'Audit Log', icon: ScrollText },
+      ]
+      : []),
+    ...(user?.role === 'OWNER'
+      ? [
+        { href: '/settings', label: 'Pengaturan', icon: Settings },
+      ]
       : []),
   ];
 

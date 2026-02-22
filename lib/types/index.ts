@@ -306,11 +306,11 @@ export interface UnreadCount {
 export interface AuditLog {
   id: number;
   user_id: number;
+  full_name: string;
   action: string;
   entity_type: string;
   entity_id: number;
   details: string;
-  user?: User;
   created_at: string;
 }
 

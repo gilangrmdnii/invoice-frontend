@@ -86,9 +86,9 @@ export default function AuditLogsPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 text-xs font-semibold">
-                          {log.user?.full_name?.charAt(0).toUpperCase() || 'U'}
+                          {log.full_name?.charAt(0).toUpperCase() || 'U'}
                         </div>
-                        <span className="text-sm text-slate-700">{log.user?.full_name || `User #${log.user_id}`}</span>
+                        <span className="text-sm text-slate-700">{log.full_name || `User #${log.user_id}`}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
