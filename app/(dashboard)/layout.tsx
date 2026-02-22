@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -12,12 +12,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const prevPathname = useRef(pathname);
   useSSE();
 
   // Auto-close mobile sidebar on navigation
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+  if (prevPathname.current !== pathname) {
+    prevPathname.current = pathname;
+    if (mobileOpen) {
+      setMobileOpen(false);
+    }
+  }
 
   return (
     <AuthGuard>
@@ -41,7 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Main Content */}
-        <div className={clsx('transition-all duration-300', collapsed ? 'lg:ml-[72px]' : 'lg:ml-64')}>
+        <div className={clsx('transition-all duration-300', collapsed ? 'lg:ml-18' : 'lg:ml-64')}>
           <Header onMenuClick={() => setMobileOpen(true)} />
           <main className="px-4 py-5 sm:p-6">{children}</main>
         </div>
