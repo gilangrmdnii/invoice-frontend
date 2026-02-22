@@ -169,17 +169,17 @@ export default function OverviewTab({ projectId }: OverviewTabProps) {
               <div key={m.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-semibold text-sm">
-                    {m.user?.full_name?.charAt(0).toUpperCase() || 'U'}
+                    {m.full_name?.charAt(0).toUpperCase() || 'U'}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{m.user?.full_name || `User #${m.user_id}`}</p>
-                    <p className="text-xs text-slate-500">{m.user?.email || ''}</p>
+                    <p className="text-sm font-medium text-slate-900">{m.full_name || `User #${m.user_id}`}</p>
+                    <p className="text-xs text-slate-500">{m.email || ''}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {m.user?.role && (
+                  {m.role && (
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                      {m.user.role}
+                      {m.role}
                     </span>
                   )}
                   {canManage && (

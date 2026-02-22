@@ -4,12 +4,32 @@ import { use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGetInvoiceQuery } from '@/lib/api/invoiceApi';
 import { useGetCompanySettingsQuery } from '@/lib/api/companySettingsApi';
-import { formatCurrency, formatNumber, terbilang, numberToWords } from '@/lib/utils';
+import { formatNumber, terbilang, numberToWords } from '@/lib/utils';
 import { INVOICE_TYPE_LABELS } from '@/lib/types';
+import type { InvoiceItem } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
 import Badge from '@/components/ui/Badge';
 import { ArrowLeft, Printer } from 'lucide-react';
+
+// Build grouped structure: labels with children, standalone items
+function buildGroupedItems(items: InvoiceItem[]) {
+  const labels = items.filter((i) => i.is_label);
+  const standalone = items.filter((i) => !i.is_label && !i.parent_id);
+
+  const groups: { label: InvoiceItem | null; children: InvoiceItem[] }[] = [];
+
+  for (const label of labels) {
+    const children = items.filter((i) => i.parent_id === label.id);
+    groups.push({ label, children });
+  }
+
+  if (standalone.length > 0) {
+    groups.push({ label: null, children: standalone });
+  }
+
+  return groups;
+}
 
 export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -28,39 +48,9 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head><title>Invoice ${invoice?.invoice_number || ''}</title>
       <style>
-        @media print { @page { size: A4; margin: 15mm; } }
+        @media print { @page { size: A4; margin: 12mm 15mm; } }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1a1a1a; line-height: 1.5; }
-        .invoice-container { max-width: 210mm; margin: 0 auto; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 3px solid #1e40af; padding-bottom: 16px; }
-        .company-info h1 { font-size: 20px; color: #1e40af; margin-bottom: 4px; }
-        .company-info p { font-size: 10px; color: #4b5563; }
-        .invoice-title { text-align: right; }
-        .invoice-title h2 { font-size: 24px; color: #1e40af; font-weight: bold; }
-        .invoice-title p { font-size: 11px; color: #4b5563; }
-        .meta { display: flex; justify-content: space-between; margin-bottom: 20px; }
-        .meta-left, .meta-right { width: 48%; }
-        .meta-label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
-        .meta-value { font-size: 11px; font-weight: 600; margin-bottom: 8px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-        table th { background: #1e40af; color: white; padding: 8px 10px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
-        table td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11px; }
-        table tr:nth-child(even) { background: #f8fafc; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .totals { width: 320px; margin-left: auto; }
-        .totals tr td { padding: 6px 10px; font-size: 11px; }
-        .totals .total-row { background: #1e40af !important; }
-        .totals .total-row td { color: white; font-weight: bold; font-size: 13px; }
-        .terbilang { background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px 14px; border-radius: 4px; margin-bottom: 16px; font-style: italic; font-size: 11px; }
-        .payment-info { margin-bottom: 20px; }
-        .payment-info h3 { font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #1e40af; }
-        .payment-info p { font-size: 11px; }
-        .signature { display: flex; justify-content: flex-end; margin-top: 40px; }
-        .signature-box { text-align: center; width: 200px; }
-        .signature-box .line { border-bottom: 1px solid #1a1a1a; margin-top: 60px; margin-bottom: 4px; }
-        .dp-section { margin-top: 8px; }
-        .dp-section tr td { padding: 4px 10px; font-size: 11px; }
+        body { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 10px; color: #1a1a1a; line-height: 1.4; }
       </style>
     </head><body>${printContent}</body></html>`);
     win.document.close();
@@ -73,11 +63,26 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const isID = invoice.language === 'ID';
   const items = invoice.items || [];
+  const groups = buildGroupedItems(items);
   const dpPct = invoice.dp_percentage;
   const dpAmount = dpPct ? invoice.amount * dpPct / 100 : null;
   const pelunasan = dpPct ? invoice.amount - (dpAmount || 0) : null;
-
   const amountInWords = isID ? terbilang(invoice.amount) : numberToWords(invoice.amount);
+
+  const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
+
+  // Compute label totals (sum of children subtotals)
+  const labelTotals: Record<number, number> = {};
+  for (const group of groups) {
+    if (group.label) {
+      labelTotals[group.label.id!] = group.children.reduce((s, c) => s + c.subtotal, 0);
+    }
+  }
+
+  // Colors from the contoh PDF
+  const thBg = '#5b5b5b';
+  const labelBg = '#e8e8e8';
+  const borderColor = '#d0d0d0';
 
   return (
     <div>
@@ -103,205 +108,232 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       {/* Invoice Preview */}
       <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-8 shadow-sm overflow-x-auto">
         <div ref={printRef}>
-          <div className="invoice-container">
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, borderBottom: '3px solid #1e40af', paddingBottom: 16 }}>
-              <div>
-                {company?.logo_url && (
-                  <img
-                    src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}${company.logo_url}`}
-                    alt="Logo"
-                    style={{ height: 50, marginBottom: 8 }}
-                  />
-                )}
-                <h1 style={{ fontSize: 20, color: '#1e40af', fontWeight: 'bold', margin: 0 }}>
+          <div style={{ maxWidth: '210mm', margin: '0 auto', fontFamily: "'Segoe UI', Arial, Helvetica, sans-serif", fontSize: 10, color: '#1a1a1a', lineHeight: 1.4 }}>
+
+            {/* ===== HEADER: Logo + Date/Number ===== */}
+            <div style={{ marginBottom: 16 }}>
+              {company?.logo_url ? (
+                <img
+                  src={`${apiBase}${company.logo_url}`}
+                  alt="Logo"
+                  style={{ height: 60, marginBottom: 4 }}
+                />
+              ) : (
+                <div style={{ fontSize: 22, fontWeight: 'bold', color: '#333', marginBottom: 4 }}>
                   {company?.company_name || 'Company Name'}
-                </h1>
-                {company?.address && <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>{company.address}</p>}
-                {company?.phone && <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>Tel: {company.phone}</p>}
-                {company?.email && <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>Email: {company.email}</p>}
-                {company?.npwp && <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>NPWP: {company.npwp}</p>}
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <h2 style={{ fontSize: 24, color: '#1e40af', fontWeight: 'bold', margin: 0 }}>INVOICE</h2>
-                <p style={{ fontSize: 12, color: '#4b5563', margin: '4px 0', fontWeight: 600 }}>{invoice.invoice_number}</p>
-                <p style={{ fontSize: 11, color: '#4b5563', margin: 0 }}>
-                  {INVOICE_TYPE_LABELS[invoice.invoice_type]}
-                </p>
-              </div>
-            </div>
-
-            {/* Meta */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-              <div style={{ width: '48%' }}>
-                <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
-                  {isID ? 'Kepada' : 'Bill To'}
-                </p>
-                <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>{invoice.recipient_name}</p>
-                {invoice.recipient_address && <p style={{ fontSize: 11, color: '#4b5563' }}>{invoice.recipient_address}</p>}
-                {invoice.attention && <p style={{ fontSize: 11, color: '#4b5563' }}>Attn: {invoice.attention}</p>}
-              </div>
-              <div style={{ width: '48%', textAlign: 'right' }}>
-                <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
-                  {isID ? 'Tanggal' : 'Date'}
-                </p>
-                <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>
-                  {new Date(invoice.invoice_date).toLocaleDateString(isID ? 'id-ID' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </p>
-                {invoice.po_number && (
-                  <>
-                    <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
-                      {isID ? 'No. PO' : 'PO Number'}
-                    </p>
-                    <p style={{ fontSize: 12, fontWeight: 600 }}>{invoice.po_number}</p>
-                  </>
+                </div>
+              )}
+              <div style={{ fontSize: 10, color: '#555' }}>
+                {invoice.invoice_date && (
+                  <span>
+                    {new Date(invoice.invoice_date).toLocaleDateString(isID ? 'id-ID' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
                 )}
               </div>
+              <div style={{ fontSize: 10, color: '#555' }}>
+                {invoice.invoice_number}
+              </div>
             </div>
 
-            {/* Items Table */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
+            {/* ===== KEPADA ===== */}
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 10, color: '#555' }}>{isID ? 'Kepada Yth.' : 'To'}</p>
+              <p style={{ fontSize: 11, fontWeight: 700 }}>{invoice.recipient_name}</p>
+              {invoice.attention && <p style={{ fontSize: 10, fontWeight: 700 }}>{invoice.attention}</p>}
+              {invoice.recipient_address && <p style={{ fontSize: 10, color: '#555' }}>{invoice.recipient_address}</p>}
+            </div>
+
+            {/* ===== INVOICE TITLE BADGE ===== */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <div style={{ width: 0, height: 0, borderTop: '12px solid transparent', borderBottom: '12px solid transparent', borderLeft: '12px solid #4a4a4a' }}></div>
+              <span style={{ fontSize: 16, fontWeight: 300, color: '#333', letterSpacing: 1 }}>
+                INVOICE - {INVOICE_TYPE_LABELS[invoice.invoice_type] || invoice.invoice_type}
+              </span>
+            </div>
+
+            {/* ===== PROJECT NAME ===== */}
+            {invoice.project_name && (
+              <p style={{ fontSize: 11, fontWeight: 700, marginBottom: 8 }}>
+                {invoice.project_name}
+              </p>
+            )}
+
+            {/* ===== ITEMS TABLE ===== */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 0 }}>
               <thead>
                 <tr>
-                  <th style={{ background: '#1e40af', color: 'white', padding: '8px 10px', textAlign: 'left', fontSize: 10, textTransform: 'uppercase' }}>No</th>
-                  <th style={{ background: '#1e40af', color: 'white', padding: '8px 10px', textAlign: 'left', fontSize: 10, textTransform: 'uppercase' }}>
-                    {isID ? 'Keterangan' : 'Description'}
+                  <th style={{ background: thBg, color: 'white', padding: '6px 8px', textAlign: 'center', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 30 }}>&nbsp;</th>
+                  <th style={{ background: thBg, color: 'white', padding: '6px 8px', textAlign: 'left', fontSize: 9, fontWeight: 600, textTransform: 'uppercase' }}>
+                    {isID ? 'KETERANGAN' : 'DESCRIPTION'}
                   </th>
-                  <th style={{ background: '#1e40af', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: 10, textTransform: 'uppercase' }}>
-                    {isID ? 'Harga' : 'Price'}
+                  <th style={{ background: thBg, color: 'white', padding: '6px 8px', textAlign: 'right', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 90 }}>
+                    {isID ? 'HARGA' : 'PRICE'}
                   </th>
-                  <th style={{ background: '#1e40af', color: 'white', padding: '8px 10px', textAlign: 'center', fontSize: 10, textTransform: 'uppercase' }}>
-                    {isID ? 'Jumlah' : 'Qty'}
+                  <th style={{ background: thBg, color: 'white', padding: '6px 8px', textAlign: 'center', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 55 }}>
+                    {isID ? 'JUMLAH' : 'QTY'}
                   </th>
-                  <th style={{ background: '#1e40af', color: 'white', padding: '8px 10px', textAlign: 'center', fontSize: 10, textTransform: 'uppercase' }}>Unit</th>
-                  <th style={{ background: '#1e40af', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: 10, textTransform: 'uppercase' }}>Sub Total</th>
+                  <th style={{ background: thBg, color: 'white', padding: '6px 8px', textAlign: 'center', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 50 }}>UNIT</th>
+                  <th style={{ background: thBg, color: 'white', padding: '6px 8px', textAlign: 'right', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 100 }}>SUB TOTAL (Rp)</th>
+                  <th style={{ background: thBg, color: 'white', padding: '6px 8px', textAlign: 'right', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 100 }}>TOTAL (Rp)</th>
                 </tr>
               </thead>
               <tbody>
-                {(() => {
-                  // Build ordered rows: labels as section headers, children indented, standalone items numbered
-                  const labels = items.filter((i) => i.is_label);
-                  const standaloneItems = items.filter((i) => !i.is_label && !i.parent_id);
+                {groups.map((group, gIdx) => {
                   const rows: React.ReactNode[] = [];
-                  let counter = 1;
 
-                  // Render labels with their children
-                  labels.forEach((label) => {
-                    const children = items.filter((i) => i.parent_id === label.id);
+                  // Label row (bold, grey background)
+                  if (group.label) {
                     rows.push(
-                      <tr key={`label-${label.id}`} style={{ background: '#f1f5f9' }}>
-                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, fontWeight: 700 }} colSpan={6}>
-                          {label.description}
+                      <tr key={`label-${gIdx}`}>
+                        <td style={{ background: labelBg, padding: '5px 8px', borderBottom: `1px solid ${borderColor}`, fontWeight: 700, fontSize: 10 }} colSpan={6}>
+                          {group.label.description}
                         </td>
+                        <td style={{ background: labelBg, padding: '5px 8px', borderBottom: `1px solid ${borderColor}` }}></td>
                       </tr>
                     );
-                    children.forEach((child, cIdx) => {
-                      rows.push(
-                        <tr key={child.id || `child-${label.id}-${cIdx}`} style={{ background: cIdx % 2 === 1 ? '#f8fafc' : 'white' }}>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, paddingLeft: 20 }}>{counter++}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, paddingLeft: 20 }}>{child.description}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'right' }}>{formatNumber(child.unit_price)}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'center' }}>{child.quantity}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'center' }}>{child.unit}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'right', fontWeight: 600 }}>{formatNumber(child.subtotal)}</td>
-                        </tr>
-                      );
-                    });
-                  });
+                  }
 
-                  // Render standalone items
-                  standaloneItems.forEach((item, idx) => {
+                  // Child items
+                  group.children.forEach((child, cIdx) => {
+                    const isLast = cIdx === group.children.length - 1;
                     rows.push(
-                      <tr key={item.id || `item-${idx}`} style={{ background: idx % 2 === 1 ? '#f8fafc' : 'white' }}>
-                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11 }}>{counter++}</td>
-                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11 }}>{item.description}</td>
-                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'right' }}>{formatNumber(item.unit_price)}</td>
-                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'center' }}>{item.quantity}</td>
-                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'center' }}>{item.unit}</td>
-                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 11, textAlign: 'right', fontWeight: 600 }}>{formatNumber(item.subtotal)}</td>
+                      <tr key={`item-${gIdx}-${cIdx}`}>
+                        <td style={{ padding: '4px 8px', borderBottom: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'center' }}></td>
+                        <td style={{ padding: '4px 8px', borderBottom: `1px solid ${borderColor}`, fontSize: 10 }}>{child.description}</td>
+                        <td style={{ padding: '4px 8px', borderBottom: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'right' }}>
+                          {child.unit_price > 0 ? formatNumber(child.unit_price) : ''}
+                        </td>
+                        <td style={{ padding: '4px 8px', borderBottom: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'center' }}>
+                          {child.quantity}
+                        </td>
+                        <td style={{ padding: '4px 8px', borderBottom: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'center' }}>
+                          {child.unit}
+                        </td>
+                        <td style={{ padding: '4px 8px', borderBottom: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'right' }}>
+                          {formatNumber(child.subtotal)}
+                        </td>
+                        <td style={{ padding: '4px 8px', borderBottom: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'right', fontWeight: isLast && group.label ? 600 : 'normal' }}>
+                          {/* Show TOTAL (Rp) only on last item of a labeled group */}
+                          {isLast && group.label && labelTotals[group.label.id!] !== undefined
+                            ? formatNumber(labelTotals[group.label.id!])
+                            : isLast && !group.label
+                              ? formatNumber(child.subtotal)
+                              : ''
+                          }
+                        </td>
                       </tr>
                     );
                   });
 
                   return rows;
-                })()}
-              </tbody>
-            </table>
+                })}
 
-            {/* Totals */}
-            <table style={{ width: 320, marginLeft: 'auto', borderCollapse: 'collapse', marginBottom: 16 }}>
-              <tbody>
+                {/* TOTAL row */}
                 <tr>
-                  <td style={{ padding: '6px 10px', fontSize: 11 }}>Subtotal</td>
-                  <td style={{ padding: '6px 10px', fontSize: 11, textAlign: 'right', fontWeight: 600 }}>{formatCurrency(invoice.subtotal)}</td>
+                  <td colSpan={6} style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
+                    TOTAL
+                  </td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
+                    {formatNumber(invoice.amount)}
+                  </td>
                 </tr>
-                {invoice.tax_percentage > 0 && (
+
+                {/* DP row */}
+                {dpPct && dpAmount !== null && (
                   <tr>
-                    <td style={{ padding: '6px 10px', fontSize: 11 }}>{isID ? 'Pajak' : 'Tax'} ({invoice.tax_percentage}%)</td>
-                    <td style={{ padding: '6px 10px', fontSize: 11, textAlign: 'right', fontWeight: 600 }}>{formatCurrency(invoice.tax_amount)}</td>
+                    <td colSpan={6} style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
+                      {isID ? `PEMBAYARAN DP ${dpPct}%` : `DOWN PAYMENT ${dpPct}%`}
+                    </td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
+                      {formatNumber(dpAmount)}
+                    </td>
                   </tr>
                 )}
-                <tr style={{ background: '#1e40af' }}>
-                  <td style={{ padding: '8px 10px', fontSize: 13, color: 'white', fontWeight: 'bold' }}>TOTAL</td>
-                  <td style={{ padding: '8px 10px', fontSize: 13, color: 'white', fontWeight: 'bold', textAlign: 'right' }}>{formatCurrency(invoice.amount)}</td>
-                </tr>
+
+                {/* PELUNASAN row */}
+                {dpPct && pelunasan !== null && (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
+                      {isID ? 'PELUNASAN' : 'BALANCE DUE'}
+                    </td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
+                      {formatNumber(pelunasan)}
+                    </td>
+                  </tr>
+                )}
+
+                {/* Tax row (if applicable) */}
+                {invoice.tax_percentage > 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
+                      {isID ? 'PAJAK' : 'TAX'} ({invoice.tax_percentage}%)
+                    </td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
+                      {formatNumber(invoice.tax_amount)}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
 
-            {/* DP breakdown */}
-            {dpPct && dpAmount !== null && pelunasan !== null && (
-              <table style={{ width: 320, marginLeft: 'auto', borderCollapse: 'collapse', marginBottom: 16 }}>
-                <tbody>
-                  <tr>
-                    <td style={{ padding: '4px 10px', fontSize: 11 }}>DP ({dpPct}%)</td>
-                    <td style={{ padding: '4px 10px', fontSize: 11, textAlign: 'right', fontWeight: 600 }}>{formatCurrency(dpAmount)}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '4px 10px', fontSize: 11 }}>{isID ? 'Pelunasan' : 'Balance Due'}</td>
-                    <td style={{ padding: '4px 10px', fontSize: 11, textAlign: 'right', fontWeight: 600 }}>{formatCurrency(pelunasan)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            )}
-
-            {/* Terbilang */}
-            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '10px 14px', borderRadius: 4, marginBottom: 16, fontStyle: 'italic', fontSize: 11 }}>
-              <strong>{isID ? 'Terbilang' : 'Amount in Words'}:</strong> {amountInWords}
+            {/* ===== TERBILANG ===== */}
+            <div style={{ marginTop: 16, marginBottom: 24, fontSize: 10 }}>
+              <span>{isID ? 'Terbilang' : 'Amount in words'} : </span>
+              <span>{amountInWords}</span>
             </div>
 
-            {/* Bank Info */}
+            {/* ===== SISTEM PEMBAYARAN ===== */}
             {company?.bank_name && (
-              <div style={{ marginBottom: 20 }}>
-                <h3 style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 6, color: '#1e40af' }}>
-                  {isID ? 'Informasi Pembayaran' : 'Payment Information'}
-                </h3>
-                <p style={{ fontSize: 11 }}>{isID ? 'Bank' : 'Bank'}: {company.bank_name} {company.bank_branch ? `- ${company.bank_branch}` : ''}</p>
-                <p style={{ fontSize: 11 }}>{isID ? 'No. Rekening' : 'Account No.'}: {company.bank_account_number}</p>
-                <p style={{ fontSize: 11 }}>{isID ? 'Atas Nama' : 'Account Name'}: {company.bank_account_name}</p>
-              </div>
-            )}
-
-            {/* Notes */}
-            {invoice.notes && (
-              <div style={{ marginBottom: 20 }}>
-                <h3 style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 4, color: '#1e40af' }}>
-                  {isID ? 'Catatan' : 'Notes'}
-                </h3>
-                <p style={{ fontSize: 11, color: '#4b5563' }}>{invoice.notes}</p>
-              </div>
-            )}
-
-            {/* Signature */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 40 }}>
-              <div style={{ textAlign: 'center', width: 200 }}>
-                <p style={{ fontSize: 10, color: '#6b7280', marginBottom: 60 }}>
-                  {isID ? 'Hormat kami,' : 'Best regards,'}
+              <div style={{ marginBottom: 24 }}>
+                <p style={{ fontSize: 16, fontWeight: 300, color: '#555', marginBottom: 8, letterSpacing: 0.5 }}>
+                  {isID ? 'sistem' : 'payment'}<span style={{ fontWeight: 600 }}>{isID ? 'pembayaran' : ' system'}</span>
                 </p>
-                <div style={{ borderBottom: '1px solid #1a1a1a', marginBottom: 4 }}></div>
-                <p style={{ fontSize: 11, fontWeight: 'bold' }}>{company?.signatory_name || '________________'}</p>
-                {company?.signatory_title && <p style={{ fontSize: 10, color: '#4b5563' }}>{company.signatory_title}</p>}
+                <p style={{ fontSize: 10, marginBottom: 2 }}>
+                  {isID ? 'Mohon dapat dibayarkan selambat-lambatnya 7 hari sebelum pelaksanaan' : 'Please make payment at least 7 days before execution'}
+                </p>
+                <p style={{ fontSize: 10, marginBottom: 2 }}>
+                  {isID ? 'Pembayaran dapat dilakukan secara tunai atau transfer ke :' : 'Payment can be made in cash or transfer to:'}
+                </p>
+                <p style={{ fontSize: 10, fontWeight: 700 }}>
+                  {company.bank_name} {company.bank_branch ? `Cabang ${company.bank_branch}` : ''}
+                </p>
+                <p style={{ fontSize: 10 }}>
+                  Rek <span style={{ fontWeight: 700 }}>{company.bank_account_number}</span>
+                </p>
+                <p style={{ fontSize: 10 }}>
+                  a/n <span style={{ fontWeight: 700 }}>{company.bank_account_name}</span>
+                </p>
+              </div>
+            )}
+
+            {/* ===== NOTES ===== */}
+            {invoice.notes && (
+              <div style={{ marginBottom: 16, fontSize: 10, color: '#555' }}>
+                <p>{invoice.notes}</p>
+              </div>
+            )}
+
+            {/* ===== SIGNATURE ===== */}
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ fontSize: 10, marginBottom: 4 }}>{isID ? 'Terimakasih.' : 'Thank you.'}</p>
+              <p style={{ fontSize: 10, marginBottom: 60 }}>{isID ? 'Hormat Kami' : 'Best regards'}</p>
+
+              {/* Placeholder for e-meterai + stamp area */}
+              <div style={{ marginBottom: 8, height: 60 }}>
+                {/* e-meterai would go here */}
+              </div>
+
+              <p style={{ fontSize: 11, fontWeight: 700 }}>{company?.signatory_name || '________________'}</p>
+              {company?.signatory_title && <p style={{ fontSize: 10, color: '#555' }}>{company.signatory_title}</p>}
+            </div>
+
+            {/* ===== FOOTER ===== */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', marginTop: 40, borderTop: '1px solid #e0e0e0', paddingTop: 12 }}>
+              <div style={{ textAlign: 'right', fontSize: 9, color: '#555', lineHeight: 1.6 }}>
+                {company?.address && <p>{company.address}</p>}
               </div>
             </div>
+
           </div>
         </div>
       </div>

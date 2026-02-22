@@ -47,8 +47,10 @@ export interface ProjectMember {
   id: number;
   project_id: number;
   user_id: number;
-  user?: User;
-  joined_at: string;
+  full_name: string;
+  email: string;
+  role: string;
+  created_at: string;
 }
 
 export interface CreateProjectRequest {
@@ -98,6 +100,7 @@ export interface Invoice {
   invoice_number: string;
   invoice_type: InvoiceType;
   project_id: number;
+  project_name?: string;
   amount: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   file_url?: string;
