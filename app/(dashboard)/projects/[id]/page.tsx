@@ -5,14 +5,16 @@ import { useGetProjectQuery } from '@/lib/api/projectApi';
 import { useAppSelector } from '@/lib/hooks';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import OverviewTab from './_components/OverviewTab';
+import PlanTab from './_components/PlanTab';
 import InvoiceTab from './_components/InvoiceTab';
 import ExpenseTab from './_components/ExpenseTab';
 import BudgetRequestTab from './_components/BudgetRequestTab';
 import clsx from 'clsx';
-import { FolderKanban, FileText, Receipt, Wallet } from 'lucide-react';
+import { FolderKanban, ClipboardList, FileText, Receipt, Wallet } from 'lucide-react';
 
 const TABS = [
   { key: 'overview', label: 'Overview', icon: FolderKanban },
+  { key: 'plan', label: 'Rencana', icon: ClipboardList },
   { key: 'invoice', label: 'Invoice', icon: FileText },
   { key: 'expenses', label: 'Pengeluaran', icon: Receipt },
   { key: 'budget-requests', label: 'Budget Request', icon: Wallet },
@@ -85,6 +87,7 @@ export default function ProjectDetailPage() {
 
       {/* Tab Content */}
       {activeTab === 'overview' && <OverviewTab projectId={id} />}
+      {activeTab === 'plan' && <PlanTab projectId={id} />}
       {activeTab === 'invoice' && <InvoiceTab projectId={id} />}
       {activeTab === 'expenses' && <ExpenseTab projectId={id} />}
       {activeTab === 'budget-requests' && <BudgetRequestTab projectId={id} />}

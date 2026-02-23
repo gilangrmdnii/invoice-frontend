@@ -24,6 +24,7 @@ export const baseApi = createApi({
     'CompanySettings',
     'Payment',
     'User',
+    'ProjectPlan',
   ],
   endpoints: () => ({}),
 });

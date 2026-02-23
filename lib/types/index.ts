@@ -70,7 +70,42 @@ export interface ProjectMember {
 export interface CreateProjectRequest {
   name: string;
   description?: string;
-  total_budget: number;
+  total_budget?: number;
+  plan_items?: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[];
+  plan_labels?: { description: string; items: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[] }[];
+}
+
+// ==================== Project Plan ====================
+export interface ProjectPlanItem {
+  id: number;
+  project_id: number;
+  parent_id?: number | null;
+  is_label: boolean;
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  subtotal: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlanItemRequest {
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+}
+
+export interface PlanLabelRequest {
+  description: string;
+  items: PlanItemRequest[];
+}
+
+export interface UpdateProjectPlanRequest {
+  items?: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[];
+  labels?: { description: string; items: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[] }[];
 }
 
 export interface UpdateProjectRequest {

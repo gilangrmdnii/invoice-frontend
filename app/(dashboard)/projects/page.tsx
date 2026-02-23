@@ -9,6 +9,8 @@ import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
+import LabelGroupEditor, { buildPlanPayload, EMPTY_FORM_ITEM } from '@/components/ui/LabelGroupEditor';
+import type { LabelGroup } from '@/components/ui/LabelGroupEditor';
 import { Plus, FolderKanban, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -17,22 +19,44 @@ export default function ProjectsPage() {
   const { data, isLoading, isError } = useGetProjectsQuery();
   const [createProject, { isLoading: creating }] = useCreateProjectMutation();
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', total_budget: '' });
+  const [form, setForm] = useState({ name: '', description: '' });
+  const [labelGroups, setLabelGroups] = useState<LabelGroup[]>([
+    { label: '', items: [{ ...EMPTY_FORM_ITEM }] },
+  ]);
 
   const canCreate = user?.role === 'FINANCE' || user?.role === 'OWNER';
   const projects = data?.data || [];
 
+  // Calculate total budget from plan items
+  const totalBudget = labelGroups
+    .flatMap((g) => g.items)
+    .reduce((sum, item) => sum + Number(item.quantity) * Number(item.unit_price), 0);
+
+  const resetForm = () => {
+    setForm({ name: '', description: '' });
+    setLabelGroups([{ label: '', items: [{ ...EMPTY_FORM_ITEM }] }]);
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const { labels, items } = buildPlanPayload(labelGroups);
+
+    if (labels.length === 0 && items.length === 0) {
+      toast.error('Tambahkan minimal 1 item rencana anggaran');
+      return;
+    }
+
     try {
       await createProject({
         name: form.name,
         description: form.description,
-        total_budget: Number(form.total_budget),
+        plan_labels: labels.length > 0 ? labels : undefined,
+        plan_items: items.length > 0 ? items : undefined,
       }).unwrap();
       toast.success('Proyek berhasil dibuat!');
       setShowModal(false);
-      setForm({ name: '', description: '', total_budget: '' });
+      resetForm();
     } catch (err: unknown) {
       const error = err as { data?: { message?: string } };
       toast.error(error?.data?.message || 'Gagal membuat proyek');
@@ -125,8 +149,8 @@ export default function ProjectsPage() {
       )}
 
       {/* Create Modal */}
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Buat Proyek Baru">
-        <form onSubmit={handleCreate} className="space-y-4">
+      <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title="Buat Proyek Baru" size="lg">
+        <form onSubmit={handleCreate} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Nama Proyek</label>
             <input
@@ -149,22 +173,27 @@ export default function ProjectsPage() {
               className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Total Anggaran (Rp)</label>
-            <input
-              type="number"
-              required
-              min={1}
-              value={form.total_budget}
-              onChange={(e) => setForm({ ...form, total_budget: e.target.value })}
-              placeholder="50000000"
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-            />
+
+          {/* Plan Items Editor */}
+          <LabelGroupEditor
+            labelGroups={labelGroups}
+            setLabelGroups={setLabelGroups}
+            title="Rencana Anggaran *"
+            addLabelText="+ Tambah Label"
+          />
+
+          {/* Auto-calculated budget */}
+          <div className="bg-slate-50 rounded-xl p-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-semibold text-slate-700">Total Anggaran</span>
+              <span className="text-lg font-bold text-indigo-600">{formatCurrency(totalBudget)}</span>
+            </div>
           </div>
+
           <div className="flex gap-3 pt-2">
             <button
               type="button"
-              onClick={() => setShowModal(false)}
+              onClick={() => { setShowModal(false); resetForm(); }}
               className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors"
             >
               Batal

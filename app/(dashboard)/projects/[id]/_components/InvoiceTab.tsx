@@ -9,6 +9,7 @@ import {
   useApproveInvoiceMutation,
   useRejectInvoiceMutation,
 } from '@/lib/api/invoiceApi';
+import { useGetProjectPlanQuery } from '@/lib/api/projectApi';
 import { useAppSelector } from '@/lib/hooks';
 import { formatCurrency, formatDate, exportToCSV } from '@/lib/utils';
 import type { InvoiceType, PaymentStatus } from '@/lib/types';
@@ -18,6 +19,8 @@ import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
+import LabelGroupEditor, { planItemsToLabelGroups, buildPlanPayload, EMPTY_FORM_ITEM } from '@/components/ui/LabelGroupEditor';
+import type { LabelGroup } from '@/components/ui/LabelGroupEditor';
 import {
   Plus,
   FileText,
@@ -25,8 +28,6 @@ import {
   XCircle,
   Trash2,
   Eye,
-  X,
-  Tag,
   Download,
   CheckCircle as CheckCircleIcon,
   Clock as ClockIcon,
@@ -34,27 +35,6 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
-
-// ============ Types for form state ============
-
-interface FormItem {
-  description: string;
-  quantity: number;
-  unit: string;
-  unit_price: number;
-}
-
-interface LabelGroup {
-  label: string;
-  items: FormItem[];
-}
-
-const EMPTY_FORM_ITEM: FormItem = {
-  description: '',
-  quantity: 1,
-  unit: 'unit',
-  unit_price: 0,
-};
 
 interface InvoiceTabProps {
   projectId: number;
@@ -64,6 +44,7 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
   const user = useAppSelector((s) => s.auth.user);
   const router = useRouter();
   const { data, isLoading, isError } = useGetInvoicesQuery();
+  const { data: planData } = useGetProjectPlanQuery(projectId);
   const [createInvoice, { isLoading: creating }] = useCreateInvoiceMutation();
   const [deleteInvoice] = useDeleteInvoiceMutation();
   const [approveInvoice] = useApproveInvoiceMutation();
@@ -108,44 +89,6 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
   const taxAmount = subtotal * Number(form.tax_percentage || 0) / 100;
   const total = subtotal + taxAmount;
 
-  // ============ Label/Item CRUD ============
-
-  const addLabelGroup = () => {
-    setLabelGroups([...labelGroups, { label: '', items: [{ ...EMPTY_FORM_ITEM }] }]);
-  };
-
-  const removeLabelGroup = (gIdx: number) => {
-    if (labelGroups.length <= 1) return;
-    setLabelGroups(labelGroups.filter((_, i) => i !== gIdx));
-  };
-
-  const updateLabel = (gIdx: number, value: string) => {
-    const updated = [...labelGroups];
-    updated[gIdx] = { ...updated[gIdx], label: value };
-    setLabelGroups(updated);
-  };
-
-  const addItemToGroup = (gIdx: number) => {
-    const updated = [...labelGroups];
-    updated[gIdx] = { ...updated[gIdx], items: [...updated[gIdx].items, { ...EMPTY_FORM_ITEM }] };
-    setLabelGroups(updated);
-  };
-
-  const removeItemFromGroup = (gIdx: number, iIdx: number) => {
-    const updated = [...labelGroups];
-    if (updated[gIdx].items.length <= 1) return;
-    updated[gIdx] = { ...updated[gIdx], items: updated[gIdx].items.filter((_, i) => i !== iIdx) };
-    setLabelGroups(updated);
-  };
-
-  const updateGroupItem = (gIdx: number, iIdx: number, field: string, value: string | number) => {
-    const updated = [...labelGroups];
-    const items = [...updated[gIdx].items];
-    items[iIdx] = { ...items[iIdx], [field]: value };
-    updated[gIdx] = { ...updated[gIdx], items };
-    setLabelGroups(updated);
-  };
-
   const resetForm = () => {
     setForm({
       invoice_type: 'DP',
@@ -163,31 +106,21 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
     setLabelGroups([{ label: '', items: [{ ...EMPTY_FORM_ITEM }] }]);
   };
 
+  const openCreateModal = () => {
+    // Auto-populate from plan if available
+    const planItems = planData?.data;
+    if (planItems && planItems.length > 0) {
+      setLabelGroups(planItemsToLabelGroups(planItems));
+    } else {
+      setLabelGroups([{ label: '', items: [{ ...EMPTY_FORM_ITEM }] }]);
+    }
+    setShowModal(true);
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Separate labels (groups with label text) from standalone items (groups without label)
-    const labels: { description: string; items: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[] }[] = [];
-    const standaloneItems: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[] = [];
-
-    for (const group of labelGroups) {
-      const validItems = group.items.filter((i) => i.description && i.unit_price > 0);
-      if (validItems.length === 0) continue;
-
-      const mappedItems = validItems.map((i) => ({
-        description: i.description,
-        quantity: Number(i.quantity),
-        unit: i.unit,
-        unit_price: Number(i.unit_price),
-        subtotal: Number(i.quantity) * Number(i.unit_price),
-      }));
-
-      if (group.label.trim()) {
-        labels.push({ description: group.label.trim(), items: mappedItems });
-      } else {
-        standaloneItems.push(...mappedItems);
-      }
-    }
+    const { labels, items: standaloneItems } = buildPlanPayload(labelGroups);
 
     if (labels.length === 0 && standaloneItems.length === 0) {
       toast.error('Tambahkan minimal 1 item invoice');
@@ -318,7 +251,7 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
           )}
           {canCreate && (
             <button
-              onClick={() => setShowModal(true)}
+              onClick={openCreateModal}
               className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
             >
               <Plus size={18} />
@@ -517,123 +450,12 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
           </div>
 
           {/* ============ Label Groups + Items ============ */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-slate-700">Item Invoice *</label>
-              <button
-                type="button"
-                onClick={addLabelGroup}
-                className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700"
-              >
-                <Tag size={12} />
-                + Tambah Label
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {labelGroups.map((group, gIdx) => (
-                <div key={gIdx} className="border border-slate-200 rounded-xl overflow-hidden">
-                  {/* Label header */}
-                  <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 border-b border-slate-200">
-                    <Tag size={14} className="text-slate-400 shrink-0" />
-                    <input
-                      value={group.label}
-                      onChange={(e) => updateLabel(gIdx, e.target.value)}
-                      placeholder="Nama label (opsional, kosongkan jika tanpa label)..."
-                      className="flex-1 bg-transparent text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => addItemToGroup(gIdx)}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-700 whitespace-nowrap"
-                    >
-                      + Item
-                    </button>
-                    {labelGroups.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeLabelGroup(gIdx)}
-                        className="p-1 text-slate-400 hover:text-red-500"
-                        title="Hapus label & semua item-nya"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Items table */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[500px]">
-                      <thead>
-                        <tr className="bg-white border-b border-slate-100">
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500">Keterangan</th>
-                          <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 w-20">Qty</th>
-                          <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 w-20">Unit</th>
-                          <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 w-32">Harga</th>
-                          <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 w-32">Subtotal</th>
-                          <th className="w-8"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {group.items.map((item, iIdx) => (
-                          <tr key={iIdx} className="border-b border-slate-100">
-                            <td className="px-2 py-1.5">
-                              <input
-                                required
-                                value={item.description}
-                                onChange={(e) => updateGroupItem(gIdx, iIdx, 'description', e.target.value)}
-                                placeholder="Deskripsi item..."
-                                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
-                              />
-                            </td>
-                            <td className="px-2 py-1.5">
-                              <input
-                                type="number"
-                                required
-                                min={0.01}
-                                step="any"
-                                value={item.quantity || ''}
-                                onChange={(e) => updateGroupItem(gIdx, iIdx, 'quantity', Number(e.target.value))}
-                                className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
-                              />
-                            </td>
-                            <td className="px-2 py-1.5">
-                              <input
-                                required
-                                value={item.unit}
-                                onChange={(e) => updateGroupItem(gIdx, iIdx, 'unit', e.target.value)}
-                                className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
-                              />
-                            </td>
-                            <td className="px-2 py-1.5">
-                              <input
-                                type="number"
-                                required
-                                min={1}
-                                value={item.unit_price || ''}
-                                onChange={(e) => updateGroupItem(gIdx, iIdx, 'unit_price', Number(e.target.value))}
-                                className="w-full px-2 py-1.5 text-sm text-right border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
-                              />
-                            </td>
-                            <td className="px-3 py-1.5 text-right text-sm font-medium text-slate-700">
-                              {formatCurrency(Number(item.quantity) * Number(item.unit_price))}
-                            </td>
-                            <td className="px-1 py-1.5">
-                              {group.items.length > 1 && (
-                                <button type="button" onClick={() => removeItemFromGroup(gIdx, iIdx)} className="p-1 text-slate-400 hover:text-red-500">
-                                  <X size={14} />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <LabelGroupEditor
+            labelGroups={labelGroups}
+            setLabelGroups={setLabelGroups}
+            title="Item Invoice *"
+            addLabelText="+ Tambah Label"
+          />
 
           {/* Totals */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -6,6 +6,8 @@ import type {
   UpdateProjectRequest,
   AddMemberRequest,
   ProjectMember,
+  ProjectPlanItem,
+  UpdateProjectPlanRequest,
 } from '../types';
 
 export const projectApi = baseApi.injectEndpoints({
@@ -53,6 +55,18 @@ export const projectApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Project'],
     }),
+    getProjectPlan: builder.query<ApiResponse<ProjectPlanItem[]>, number>({
+      query: (id) => `/projects/${id}/plan`,
+      providesTags: (_r, _e, id) => [{ type: 'ProjectPlan', id }],
+    }),
+    updateProjectPlan: builder.mutation<ApiResponse<ProjectPlanItem[]>, { id: number; body: UpdateProjectPlanRequest }>({
+      query: ({ id, body }) => ({
+        url: `/projects/${id}/plan`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (_r, _e, { id }) => [{ type: 'ProjectPlan', id }, 'Project', 'Dashboard'],
+    }),
   }),
 });
 
@@ -64,4 +78,6 @@ export const {
   useGetProjectMembersQuery,
   useAddProjectMemberMutation,
   useRemoveProjectMemberMutation,
+  useGetProjectPlanQuery,
+  useUpdateProjectPlanMutation,
 } = projectApi;
