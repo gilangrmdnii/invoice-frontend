@@ -10,7 +10,7 @@ import {
   useRejectInvoiceMutation,
 } from '@/lib/api/invoiceApi';
 import { useAppSelector } from '@/lib/hooks';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, exportToCSV } from '@/lib/utils';
 import type { InvoiceType, PaymentStatus } from '@/lib/types';
 import { INVOICE_TYPE_LABELS, PAYMENT_STATUS_LABELS } from '@/lib/types';
 import Badge from '@/components/ui/Badge';
@@ -27,6 +27,7 @@ import {
   Eye,
   X,
   Tag,
+  Download,
   CheckCircle as CheckCircleIcon,
   Clock as ClockIcon,
   AlertCircle as AlertCircleIcon,
@@ -281,6 +282,40 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
             <option value="APPROVED">Approved</option>
             <option value="REJECTED">Rejected</option>
           </select>
+          {filtered.length > 0 && (
+            <button
+              onClick={() => {
+                const rows = filtered.map((inv) => ({
+                  invoice_number: inv.invoice_number,
+                  type: INVOICE_TYPE_LABELS[inv.invoice_type] || inv.invoice_type,
+                  recipient: inv.recipient_name,
+                  amount: inv.amount,
+                  paid: inv.paid_amount,
+                  remaining: inv.amount - inv.paid_amount,
+                  status: inv.status,
+                  payment_status: PAYMENT_STATUS_LABELS[inv.payment_status] || inv.payment_status,
+                  invoice_date: inv.invoice_date ? formatDate(inv.invoice_date) : '',
+                  due_date: inv.due_date ? formatDate(inv.due_date) : '',
+                }));
+                exportToCSV(`invoice_${new Date().toISOString().slice(0, 10)}.csv`, [
+                  { label: 'No Invoice', key: 'invoice_number' },
+                  { label: 'Tipe', key: 'type' },
+                  { label: 'Penerima', key: 'recipient' },
+                  { label: 'Jumlah', key: 'amount' },
+                  { label: 'Terbayar', key: 'paid' },
+                  { label: 'Sisa', key: 'remaining' },
+                  { label: 'Status', key: 'status' },
+                  { label: 'Pembayaran', key: 'payment_status' },
+                  { label: 'Tanggal Invoice', key: 'invoice_date' },
+                  { label: 'Jatuh Tempo', key: 'due_date' },
+                ], rows);
+              }}
+              className="flex items-center gap-2 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              <Download size={16} />
+              Export CSV
+            </button>
+          )}
           {canCreate && (
             <button
               onClick={() => setShowModal(true)}

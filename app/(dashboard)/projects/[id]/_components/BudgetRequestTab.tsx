@@ -8,13 +8,13 @@ import {
   useRejectBudgetRequestMutation,
 } from '@/lib/api/budgetRequestApi';
 import { useAppSelector } from '@/lib/hooks';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, exportToCSV } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
-import { Plus, Wallet, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Wallet, CheckCircle, XCircle, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface BudgetRequestTabProps {
@@ -102,6 +102,30 @@ export default function BudgetRequestTab({ projectId }: BudgetRequestTabProps) {
             <option value="APPROVED">Approved</option>
             <option value="REJECTED">Rejected</option>
           </select>
+          {filtered.length > 0 && (
+            <button
+              onClick={() => {
+                const rows = filtered.map((r) => ({
+                  amount: r.amount,
+                  reason: r.reason,
+                  status: r.status,
+                  requester: r.requester?.full_name || '',
+                  date: formatDate(r.created_at),
+                }));
+                exportToCSV(`budget_request_${new Date().toISOString().slice(0, 10)}.csv`, [
+                  { label: 'Jumlah', key: 'amount' },
+                  { label: 'Alasan', key: 'reason' },
+                  { label: 'Status', key: 'status' },
+                  { label: 'Diajukan Oleh', key: 'requester' },
+                  { label: 'Tanggal', key: 'date' },
+                ], rows);
+              }}
+              className="flex items-center gap-2 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              <Download size={16} />
+              Export CSV
+            </button>
+          )}
           <button
             onClick={() => setShowModal(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"

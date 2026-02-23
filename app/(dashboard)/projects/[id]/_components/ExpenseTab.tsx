@@ -8,7 +8,7 @@ import {
 } from '@/lib/api/expenseApi';
 import { useUploadFileMutation } from '@/lib/api/uploadApi';
 import { useAppSelector } from '@/lib/hooks';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, exportToCSV } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -20,6 +20,7 @@ import {
   Trash2,
   Upload,
   ExternalLink,
+  Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -107,13 +108,41 @@ export default function ExpenseTab({ projectId }: ExpenseTabProps) {
           <h2 className="text-xl font-bold text-slate-900">Daftar Pengeluaran</h2>
           <p className="text-sm text-slate-500 mt-1">{expenses.length} pengeluaran</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
-        >
-          <Plus size={18} />
-          Tambah
-        </button>
+        <div className="flex items-center gap-3">
+          {expenses.length > 0 && (
+            <button
+              onClick={() => {
+                const rows = expenses.map((exp) => ({
+                  description: exp.description,
+                  category: exp.category,
+                  amount: exp.amount,
+                  status: exp.status,
+                  created_by: exp.creator?.full_name || '',
+                  date: formatDate(exp.created_at),
+                }));
+                exportToCSV(`pengeluaran_${new Date().toISOString().slice(0, 10)}.csv`, [
+                  { label: 'Deskripsi', key: 'description' },
+                  { label: 'Kategori', key: 'category' },
+                  { label: 'Jumlah', key: 'amount' },
+                  { label: 'Status', key: 'status' },
+                  { label: 'Dibuat Oleh', key: 'created_by' },
+                  { label: 'Tanggal', key: 'date' },
+                ], rows);
+              }}
+              className="flex items-center gap-2 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              <Download size={16} />
+              Export CSV
+            </button>
+          )}
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
+          >
+            <Plus size={18} />
+            Tambah
+          </button>
+        </div>
       </div>
 
       {expenses.length === 0 ? (

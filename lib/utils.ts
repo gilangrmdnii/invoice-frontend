@@ -95,3 +95,35 @@ export function numberToWords(n: number, currency = 'Rupiah'): string {
 export function formatNumber(n: number): string {
   return new Intl.NumberFormat('id-ID').format(n);
 }
+
+// ==================== CSV Export ====================
+export function exportToCSV(
+  filename: string,
+  headers: { label: string; key: string }[],
+  rows: Record<string, unknown>[],
+) {
+  const escape = (val: unknown): string => {
+    const str = val == null ? '' : String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const headerLine = headers.map((h) => escape(h.label)).join(',');
+  const dataLines = rows.map((row) =>
+    headers.map((h) => escape(row[h.key])).join(',')
+  );
+  const csv = [headerLine, ...dataLines].join('\n');
+
+  // BOM for Excel UTF-8 compatibility
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
