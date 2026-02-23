@@ -11,6 +11,7 @@ import {
   FolderKanban,
   FileText,
   Bell,
+  Users,
   ScrollText,
   Settings,
   LogOut,
@@ -40,6 +41,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: '/notifications', label: 'Notifikasi', icon: Bell },
     ...(user?.role === 'FINANCE' || user?.role === 'OWNER'
       ? [
+        { href: '/users', label: 'Pengguna', icon: Users },
         { href: '/audit-logs', label: 'Audit Log', icon: ScrollText },
       ]
       : []),

@@ -19,6 +19,20 @@ export interface RegisterRequest {
   role: 'SPV' | 'FINANCE' | 'OWNER';
 }
 
+export interface CreateUserRequest {
+  full_name: string;
+  email: string;
+  password: string;
+  role: 'SPV' | 'FINANCE' | 'OWNER';
+}
+
+export interface UpdateUserRequest {
+  full_name?: string;
+  email?: string;
+  password?: string;
+  role?: 'SPV' | 'FINANCE' | 'OWNER';
+}
+
 export interface AuthResponse {
   token: string;
   user: User;
