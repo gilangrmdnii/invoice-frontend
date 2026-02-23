@@ -95,6 +95,35 @@ export interface InvoiceItem {
   sort_order?: number;
 }
 
+export type PaymentStatus = 'UNPAID' | 'PARTIAL_PAID' | 'PAID';
+export type PaymentMethod = 'TRANSFER' | 'CASH' | 'GIRO' | 'OTHER';
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  UNPAID: 'Belum Bayar',
+  PARTIAL_PAID: 'Bayar Sebagian',
+  PAID: 'Lunas',
+};
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  TRANSFER: 'Transfer',
+  CASH: 'Cash',
+  GIRO: 'Giro',
+  OTHER: 'Lainnya',
+};
+
+export interface InvoicePayment {
+  id: number;
+  invoice_id: number;
+  amount: number;
+  payment_date: string;
+  payment_method: PaymentMethod;
+  proof_url?: string;
+  notes?: string;
+  created_by: number;
+  creator_name?: string;
+  created_at: string;
+}
+
 export interface Invoice {
   id: number;
   invoice_number: string;
@@ -102,13 +131,16 @@ export interface Invoice {
   project_id: number;
   project_name?: string;
   amount: number;
+  paid_amount: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  payment_status: PaymentStatus;
   file_url?: string;
   recipient_name: string;
   recipient_address?: string;
   attention?: string;
   po_number?: string;
   invoice_date: string;
+  due_date?: string;
   dp_percentage?: number;
   subtotal: number;
   tax_percentage: number;
@@ -119,8 +151,18 @@ export interface Invoice {
   approved_by?: number;
   reject_notes?: string;
   items?: InvoiceItem[];
+  payments?: InvoicePayment[];
   created_at: string;
   updated_at: string;
+}
+
+export interface CreateInvoicePaymentRequest {
+  invoice_id: number;
+  amount: number;
+  payment_date: string;
+  payment_method: PaymentMethod;
+  proof_url?: string;
+  notes?: string;
 }
 
 export interface InvoiceLabelRequest {
@@ -136,6 +178,7 @@ export interface CreateInvoiceRequest {
   attention?: string;
   po_number?: string;
   invoice_date: string;
+  due_date?: string;
   dp_percentage?: number;
   tax_percentage: number;
   notes?: string;

@@ -11,8 +11,8 @@ import {
 } from '@/lib/api/invoiceApi';
 import { useAppSelector } from '@/lib/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import type { InvoiceType } from '@/lib/types';
-import { INVOICE_TYPE_LABELS } from '@/lib/types';
+import type { InvoiceType, PaymentStatus } from '@/lib/types';
+import { INVOICE_TYPE_LABELS, PAYMENT_STATUS_LABELS } from '@/lib/types';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -27,8 +27,12 @@ import {
   Eye,
   X,
   Tag,
+  CheckCircle as CheckCircleIcon,
+  Clock as ClockIcon,
+  AlertCircle as AlertCircleIcon,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import clsx from 'clsx';
 
 // ============ Types for form state ============
 
@@ -79,6 +83,7 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
     attention: '',
     po_number: '',
     invoice_date: new Date().toISOString().split('T')[0],
+    due_date: '',
     dp_percentage: '',
     tax_percentage: '0',
     notes: '',
@@ -148,6 +153,7 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
       attention: '',
       po_number: '',
       invoice_date: new Date().toISOString().split('T')[0],
+      due_date: '',
       dp_percentage: '',
       tax_percentage: '0',
       notes: '',
@@ -196,6 +202,7 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
         attention: form.attention,
         po_number: form.po_number,
         invoice_date: form.invoice_date,
+        due_date: form.due_date || undefined,
         dp_percentage: form.dp_percentage ? Number(form.dp_percentage) : undefined,
         tax_percentage: Number(form.tax_percentage || 0),
         notes: form.notes,
@@ -299,6 +306,7 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Penerima</th>
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Jumlah</th>
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Status</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Pembayaran</th>
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Tanggal</th>
                   <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Aksi</th>
                 </tr>
@@ -320,6 +328,13 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
                     <td className="px-6 py-4 text-sm text-slate-600">{inv.recipient_name}</td>
                     <td className="px-6 py-4 text-sm font-semibold text-slate-900">{formatCurrency(inv.amount)}</td>
                     <td className="px-6 py-4"><Badge status={inv.status} /></td>
+                    <td className="px-6 py-4">
+                      {inv.status === 'APPROVED' ? (
+                        <PaymentStatusBadge status={inv.payment_status} />
+                      ) : (
+                        <span className="text-xs text-slate-400">-</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-sm text-slate-500">{formatDate(inv.invoice_date)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-1">
@@ -420,7 +435,7 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
           </div>
 
           {/* Row 3: PO, Date, Language */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">No. PO</label>
               <input
@@ -428,16 +443,6 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
                 onChange={(e) => setForm({ ...form, po_number: e.target.value })}
                 placeholder="PO-001"
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Tanggal Invoice *</label>
-              <input
-                type="date"
-                required
-                value={form.invoice_date}
-                onChange={(e) => setForm({ ...form, invoice_date: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
               />
             </div>
             <div>
@@ -450,6 +455,29 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
                 <option value="ID">Indonesia</option>
                 <option value="EN">English</option>
               </select>
+            </div>
+          </div>
+
+          {/* Row: Invoice Date & Due Date */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Tanggal Invoice *</label>
+              <input
+                type="date"
+                required
+                value={form.invoice_date}
+                onChange={(e) => setForm({ ...form, invoice_date: e.target.value })}
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Jatuh Tempo</label>
+              <input
+                type="date"
+                value={form.due_date}
+                onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              />
             </div>
           </div>
 
@@ -717,5 +745,21 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
         variant="danger"
       />
     </div>
+  );
+}
+
+function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
+  const config = {
+    UNPAID: { bg: 'bg-red-50', text: 'text-red-700', icon: AlertCircleIcon },
+    PARTIAL_PAID: { bg: 'bg-amber-50', text: 'text-amber-700', icon: ClockIcon },
+    PAID: { bg: 'bg-emerald-50', text: 'text-emerald-700', icon: CheckCircleIcon },
+  };
+  const c = config[status] || config.UNPAID;
+  const Icon = c.icon;
+  return (
+    <span className={clsx('inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg', c.bg, c.text)}>
+      <Icon size={12} />
+      {PAYMENT_STATUS_LABELS[status] || status}
+    </span>
   );
 }

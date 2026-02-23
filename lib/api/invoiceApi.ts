@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import type { ApiResponse, Invoice, CreateInvoiceRequest, UpdateInvoiceRequest, ApprovalRequest } from '../types';
+import type { ApiResponse, Invoice, InvoicePayment, CreateInvoiceRequest, UpdateInvoiceRequest, CreateInvoicePaymentRequest, ApprovalRequest } from '../types';
 
 export const invoiceApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -9,7 +9,7 @@ export const invoiceApi = baseApi.injectEndpoints({
     }),
     getInvoice: builder.query<ApiResponse<Invoice>, number>({
       query: (id) => `/invoices/${id}`,
-      providesTags: (_r, _e, id) => [{ type: 'Invoice', id }],
+      providesTags: (_r, _e, id) => [{ type: 'Invoice', id }, 'Payment'],
     }),
     createInvoice: builder.mutation<ApiResponse<Invoice>, CreateInvoiceRequest>({
       query: (body) => ({
@@ -50,6 +50,26 @@ export const invoiceApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Invoice', 'Dashboard', 'Notification'],
     }),
+    // Payment endpoints
+    createPayment: builder.mutation<ApiResponse<InvoicePayment>, CreateInvoicePaymentRequest>({
+      query: (body) => ({
+        url: `/invoices/${body.invoice_id}/payments`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Invoice', 'Payment', 'Dashboard'],
+    }),
+    getPayments: builder.query<ApiResponse<InvoicePayment[]>, number>({
+      query: (invoiceId) => `/invoices/${invoiceId}/payments`,
+      providesTags: ['Payment'],
+    }),
+    deletePayment: builder.mutation<ApiResponse<null>, { invoiceId: number; paymentId: number }>({
+      query: ({ invoiceId, paymentId }) => ({
+        url: `/invoices/${invoiceId}/payments/${paymentId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Invoice', 'Payment', 'Dashboard'],
+    }),
   }),
 });
 
@@ -61,4 +81,7 @@ export const {
   useDeleteInvoiceMutation,
   useApproveInvoiceMutation,
   useRejectInvoiceMutation,
+  useCreatePaymentMutation,
+  useGetPaymentsQuery,
+  useDeletePaymentMutation,
 } = invoiceApi;

@@ -22,6 +22,7 @@ export const baseApi = createApi({
     'Notification',
     'AuditLog',
     'CompanySettings',
+    'Payment',
   ],
   endpoints: () => ({}),
 });
