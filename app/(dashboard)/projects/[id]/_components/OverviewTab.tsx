@@ -7,6 +7,7 @@ import {
   useGetProjectMembersQuery,
   useAddProjectMemberMutation,
   useRemoveProjectMemberMutation,
+  useGetProjectPlanQuery,
 } from '@/lib/api/projectApi';
 import { useGetUsersQuery } from '@/lib/api/userApi';
 import { useAppSelector } from '@/lib/hooks';
@@ -25,6 +26,7 @@ export default function OverviewTab({ projectId }: OverviewTabProps) {
   const user = useAppSelector((s) => s.auth.user);
   const { data } = useGetProjectQuery(projectId);
   const { data: membersData } = useGetProjectMembersQuery(projectId);
+  const { data: planData } = useGetProjectPlanQuery(projectId);
   const [updateProject, { isLoading: updating }] = useUpdateProjectMutation();
   const [addMember, { isLoading: adding }] = useAddProjectMemberMutation();
   const [removeMember] = useRemoveProjectMemberMutation();
@@ -40,8 +42,15 @@ export default function OverviewTab({ projectId }: OverviewTabProps) {
 
   if (!project) return null;
 
+  const planItems = planData?.data || [];
+  const planTotal = planItems.filter((i) => !i.is_label).reduce((sum, i) => sum + i.subtotal, 0);
+
+  const isSPV = user?.role === 'SPV';
+  const budgetLabel = isSPV ? 'Rencana Anggaran' : 'Total Anggaran';
+  const budgetValue = isSPV ? planTotal : (project.total_budget || 0);
+
   const spent = project.spent_amount || 0;
-  const total = project.total_budget || 0;
+  const total = budgetValue || project.total_budget || 0;
   const pct = getBudgetPercentage(spent, total);
 
   const openEditModal = () => {
@@ -107,9 +116,9 @@ export default function OverviewTab({ projectId }: OverviewTabProps) {
           <div className="bg-slate-50 rounded-xl p-4">
             <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
               <Wallet size={14} />
-              Total Anggaran
+              {budgetLabel}
             </div>
-            <p className="text-lg font-bold text-slate-900">{formatCurrency(total)}</p>
+            <p className="text-lg font-bold text-slate-900">{formatCurrency(budgetValue)}</p>
           </div>
           <div className="bg-slate-50 rounded-xl p-4">
             <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">

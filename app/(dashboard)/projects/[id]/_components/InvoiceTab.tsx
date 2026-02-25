@@ -67,7 +67,8 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
     invoice_date: new Date().toISOString().split('T')[0],
     due_date: '',
     dp_percentage: '',
-    tax_percentage: '0',
+    ppn_percentage: '0',
+    pph_percentage: '0',
     notes: '',
     language: 'ID' as 'ID' | 'EN',
   });
@@ -86,8 +87,9 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
   // Calculate totals from all items in all groups
   const allItems = labelGroups.flatMap((g) => g.items);
   const subtotal = allItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-  const taxAmount = subtotal * Number(form.tax_percentage || 0) / 100;
-  const total = subtotal + taxAmount;
+  const ppnAmount = subtotal * Number(form.ppn_percentage || 0) / 100;
+  const pphAmount = subtotal * Number(form.pph_percentage || 0) / 100;
+  const total = subtotal + ppnAmount - pphAmount;
 
   const resetForm = () => {
     setForm({
@@ -99,7 +101,8 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
       invoice_date: new Date().toISOString().split('T')[0],
       due_date: '',
       dp_percentage: '',
-      tax_percentage: '0',
+      ppn_percentage: '0',
+      pph_percentage: '0',
       notes: '',
       language: 'ID',
     });
@@ -138,7 +141,8 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
         invoice_date: form.invoice_date,
         due_date: form.due_date || undefined,
         dp_percentage: form.dp_percentage ? Number(form.dp_percentage) : undefined,
-        tax_percentage: Number(form.tax_percentage || 0),
+        ppn_percentage: Number(form.ppn_percentage || 0),
+        pph_percentage: Number(form.pph_percentage || 0),
         notes: form.notes,
         language: form.language,
         items: standaloneItems.length > 0 ? standaloneItems : undefined,
@@ -476,15 +480,29 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Pajak (%)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">PPN (%)</label>
                 <input
                   type="number"
                   min={0}
                   max={100}
                   step="any"
-                  value={form.tax_percentage}
-                  onChange={(e) => setForm({ ...form, tax_percentage: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  value={form.ppn_percentage}
+                  onChange={(e) => setForm({ ...form, ppn_percentage: e.target.value })}
+                  placeholder="11"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">PPh (%)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="any"
+                  value={form.pph_percentage}
+                  onChange={(e) => setForm({ ...form, pph_percentage: e.target.value })}
+                  placeholder="2"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                 />
               </div>
               <div>
@@ -502,10 +520,16 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
                 <span className="text-slate-500">Subtotal</span>
                 <span className="font-medium text-slate-900">{formatCurrency(subtotal)}</span>
               </div>
-              {Number(form.tax_percentage) > 0 && (
+              {Number(form.ppn_percentage) > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Pajak ({form.tax_percentage}%)</span>
-                  <span className="font-medium text-slate-900">{formatCurrency(taxAmount)}</span>
+                  <span className="text-slate-500">PPN ({form.ppn_percentage}%)</span>
+                  <span className="font-medium text-emerald-600">+ {formatCurrency(ppnAmount)}</span>
+                </div>
+              )}
+              {Number(form.pph_percentage) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">PPh ({form.pph_percentage}%)</span>
+                  <span className="font-medium text-red-600">- {formatCurrency(pphAmount)}</span>
                 </div>
               )}
               <div className="border-t border-slate-200 pt-2 flex justify-between">

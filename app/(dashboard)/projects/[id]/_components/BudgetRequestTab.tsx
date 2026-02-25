@@ -14,6 +14,7 @@ import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
+import CurrencyInput from '@/components/ui/CurrencyInput';
 import { Plus, Wallet, CheckCircle, XCircle, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -126,13 +127,15 @@ export default function BudgetRequestTab({ projectId }: BudgetRequestTabProps) {
               Export CSV
             </button>
           )}
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
-          >
-            <Plus size={18} />
-            Ajukan
-          </button>
+          {user?.role === 'SPV' && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
+            >
+              <Plus size={18} />
+              Ajukan
+            </button>
+          )}
         </div>
       </div>
 
@@ -184,13 +187,12 @@ export default function BudgetRequestTab({ projectId }: BudgetRequestTabProps) {
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Jumlah (Rp)</label>
-            <input
-              type="number"
+            <CurrencyInput
               required
               min={1}
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              placeholder="10000000"
+              value={Number(form.amount) || 0}
+              onChange={(val) => setForm({ ...form, amount: String(val) })}
+              placeholder="10.000.000"
               className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
             />
           </div>

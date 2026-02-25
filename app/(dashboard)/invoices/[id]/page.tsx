@@ -1,18 +1,20 @@
 'use client';
 
-import { use, useRef, useState } from 'react';
+import { Fragment, use, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGetInvoiceQuery, useCreatePaymentMutation, useDeletePaymentMutation } from '@/lib/api/invoiceApi';
+import { useGetProjectPlanQuery } from '@/lib/api/projectApi';
 import { useGetCompanySettingsQuery } from '@/lib/api/companySettingsApi';
 import { useAppSelector } from '@/lib/hooks';
 import { formatNumber, formatCurrency, formatDate, terbilang, numberToWords } from '@/lib/utils';
 import { INVOICE_TYPE_LABELS, PAYMENT_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/lib/types';
-import type { InvoiceItem, PaymentMethod, PaymentStatus } from '@/lib/types';
+import type { InvoiceItem, ProjectPlanItem, PaymentMethod, PaymentStatus } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import CurrencyInput from '@/components/ui/CurrencyInput';
 import { ArrowLeft, Printer, Plus, Trash2, CreditCard, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
@@ -46,6 +48,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [createPayment, { isLoading: creatingPayment }] = useCreatePaymentMutation();
   const [deletePayment] = useDeletePaymentMutation();
 
+  const [activeTab, setActiveTab] = useState<'plan' | 'invoice'>('invoice');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; invoiceId: number } | null>(null);
   const [paymentForm, setPaymentForm] = useState({
@@ -56,6 +59,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   });
 
   const invoice = data?.data;
+  const { data: planData } = useGetProjectPlanQuery(invoice?.project_id ?? 0, { skip: !invoice?.project_id });
   const company = csData?.data;
   const payments = invoice?.payments || [];
   const canRecordPayment = user?.role === 'FINANCE' || user?.role === 'OWNER';
@@ -164,7 +168,35 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      {/* Invoice Preview */}
+      {/* Tab Navigation */}
+      <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl w-fit">
+        <button
+          onClick={() => setActiveTab('invoice')}
+          className={clsx(
+            'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+            activeTab === 'invoice' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          )}
+        >
+          Total Anggaran
+        </button>
+        <button
+          onClick={() => setActiveTab('plan')}
+          className={clsx(
+            'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+            activeTab === 'plan' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          )}
+        >
+          Rencana Anggaran
+        </button>
+      </div>
+
+      {/* Rencana Anggaran Tab */}
+      {activeTab === 'plan' && (
+        <PlanTab planItems={planData?.data || []} />
+      )}
+
+      {/* Invoice Preview (Total Anggaran Tab) */}
+      {activeTab === 'invoice' && <>
       <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-8 shadow-sm overflow-x-auto">
         <div ref={printRef}>
           <div style={{ maxWidth: '210mm', margin: '0 auto', fontFamily: "'Segoe UI', Arial, Helvetica, sans-serif", fontSize: 10, color: '#1a1a1a', lineHeight: 1.5, position: 'relative', minHeight: '297mm' }}>
@@ -325,14 +357,26 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                   </tr>
                 )}
 
-                {/* Tax row */}
-                {invoice.tax_percentage > 0 && (
+                {/* PPN row */}
+                {invoice.ppn_percentage > 0 && (
                   <tr>
                     <td colSpan={6} style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
-                      {isID ? 'PAJAK' : 'TAX'} ({invoice.tax_percentage}%)
+                      PPN ({invoice.ppn_percentage}%)
                     </td>
                     <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
-                      {formatNumber(invoice.tax_amount)}
+                      {formatNumber(invoice.ppn_amount)}
+                    </td>
+                  </tr>
+                )}
+
+                {/* PPh row */}
+                {invoice.pph_percentage > 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
+                      PPh ({invoice.pph_percentage}%)
+                    </td>
+                    <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, color: '#c0392b', borderBottom: `1px solid ${borderColor}` }}>
+                      ({formatNumber(invoice.pph_amount)})
                     </td>
                   </tr>
                 )}
@@ -533,19 +577,19 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
+      </>}
+
       {/* Record Payment Modal */}
       <Modal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} title="Catat Pembayaran">
         <form onSubmit={handleCreatePayment} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Jumlah (Rp)</label>
-            <input
-              type="number"
+            <CurrencyInput
               required
               min={1}
               max={invoice ? invoice.amount - invoice.paid_amount : undefined}
-              step="0.01"
-              value={paymentForm.amount}
-              onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+              value={Number(paymentForm.amount) || 0}
+              onChange={(val) => setPaymentForm({ ...paymentForm, amount: String(val) })}
               placeholder={`Maks: ${invoice ? formatNumber(invoice.amount - invoice.paid_amount) : ''}`}
               className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
             />
@@ -617,6 +661,75 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         confirmLabel="Hapus"
         variant="danger"
       />
+    </div>
+  );
+}
+
+function PlanTab({ planItems }: { planItems: ProjectPlanItem[] }) {
+  if (planItems.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center">
+        <p className="text-sm text-slate-400">Belum ada rencana anggaran untuk proyek ini</p>
+      </div>
+    );
+  }
+
+  // Build grouped structure from plan items
+  const labelItems = planItems.filter((i) => i.is_label);
+  const standalone = planItems.filter((i) => !i.is_label && !i.parent_id);
+
+  const groups: { label: ProjectPlanItem | null; children: ProjectPlanItem[] }[] = [];
+  for (const label of labelItems) {
+    const children = planItems.filter((i) => i.parent_id === label.id);
+    groups.push({ label, children });
+  }
+  if (standalone.length > 0) {
+    groups.push({ label: null, children: standalone });
+  }
+
+  const grandTotal = planItems.filter((i) => !i.is_label).reduce((sum, i) => sum + i.subtotal, 0);
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-slate-100 bg-slate-50">
+              <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Keterangan</th>
+              <th className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-4 w-20">Qty</th>
+              <th className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-4 w-20">Unit</th>
+              <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4 w-32">Harga</th>
+              <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4 w-32">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {groups.map((group, gIdx) => (
+              <Fragment key={gIdx}>
+                {group.label && (
+                  <tr className="bg-slate-50">
+                    <td colSpan={5} className="px-6 py-3 text-sm font-bold text-slate-800">
+                      {group.label.description}
+                    </td>
+                  </tr>
+                )}
+                {group.children.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/50">
+                    <td className="px-6 py-3 text-sm text-slate-700 pl-10">{item.description}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 text-center">{item.quantity}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 text-center">{item.unit}</td>
+                    <td className="px-6 py-3 text-sm text-slate-700 text-right">{formatCurrency(item.unit_price)}</td>
+                    <td className="px-6 py-3 text-sm font-medium text-slate-900 text-right">{formatCurrency(item.subtotal)}</td>
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
+            <tr className="border-t-2 border-slate-200 bg-slate-50">
+              <td colSpan={4} className="px-6 py-4 text-sm font-bold text-slate-900 text-right">Total Rencana Anggaran</td>
+              <td className="px-6 py-4 text-sm font-bold text-indigo-600 text-right">{formatCurrency(grandTotal)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

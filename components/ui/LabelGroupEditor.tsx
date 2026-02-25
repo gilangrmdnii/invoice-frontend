@@ -2,6 +2,7 @@
 
 import { Tag, Trash2, X } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import CurrencyInput from '@/components/ui/CurrencyInput';
 import type { ProjectPlanItem } from '@/lib/types';
 
 // ============ Types ============
@@ -236,12 +237,11 @@ export default function LabelGroupEditor({
                         />
                       </td>
                       <td className="px-2 py-1.5">
-                        <input
-                          type="number"
+                        <CurrencyInput
                           required
                           min={1}
-                          value={item.unit_price || ''}
-                          onChange={(e) => updateGroupItem(gIdx, iIdx, 'unit_price', Number(e.target.value))}
+                          value={item.unit_price || 0}
+                          onChange={(val) => updateGroupItem(gIdx, iIdx, 'unit_price', val)}
                           className="w-full px-2 py-1.5 text-sm text-right border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
                         />
                       </td>

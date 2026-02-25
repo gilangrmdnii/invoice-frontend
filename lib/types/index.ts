@@ -192,8 +192,10 @@ export interface Invoice {
   due_date?: string;
   dp_percentage?: number;
   subtotal: number;
-  tax_percentage: number;
-  tax_amount: number;
+  ppn_percentage: number;
+  ppn_amount: number;
+  pph_percentage: number;
+  pph_amount: number;
   notes?: string;
   language: 'ID' | 'EN';
   created_by: number;
@@ -229,7 +231,8 @@ export interface CreateInvoiceRequest {
   invoice_date: string;
   due_date?: string;
   dp_percentage?: number;
-  tax_percentage: number;
+  ppn_percentage: number;
+  pph_percentage: number;
   notes?: string;
   language: 'ID' | 'EN';
   file_url?: string;
@@ -244,7 +247,8 @@ export interface UpdateInvoiceRequest {
   po_number?: string;
   invoice_date?: string;
   dp_percentage?: number;
-  tax_percentage?: number;
+  ppn_percentage?: number;
+  pph_percentage?: number;
   notes?: string;
   language?: 'ID' | 'EN';
   file_url?: string;
@@ -323,6 +327,7 @@ export interface UpdateExpenseRequest {
 
 export interface ApprovalRequest {
   notes?: string;
+  proof_url?: string;
 }
 
 // ==================== Budget Request ====================
