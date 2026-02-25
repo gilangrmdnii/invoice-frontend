@@ -11,6 +11,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
 import LabelGroupEditor, { buildPlanPayload, EMPTY_FORM_ITEM } from '@/components/ui/LabelGroupEditor';
 import type { LabelGroup } from '@/components/ui/LabelGroupEditor';
+import CurrencyInput from '@/components/ui/CurrencyInput';
 import { Plus, FolderKanban, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -19,7 +20,7 @@ export default function ProjectsPage() {
   const { data, isLoading, isError } = useGetProjectsQuery();
   const [createProject, { isLoading: creating }] = useCreateProjectMutation();
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '' });
+  const [form, setForm] = useState({ name: '', description: '', total_budget: '' });
   const [labelGroups, setLabelGroups] = useState<LabelGroup[]>([
     { label: '', items: [{ ...EMPTY_FORM_ITEM }] },
   ]);
@@ -33,12 +34,17 @@ export default function ProjectsPage() {
     .reduce((sum, item) => sum + Number(item.quantity) * Number(item.unit_price), 0);
 
   const resetForm = () => {
-    setForm({ name: '', description: '' });
+    setForm({ name: '', description: '', total_budget: '' });
     setLabelGroups([{ label: '', items: [{ ...EMPTY_FORM_ITEM }] }]);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!form.total_budget || Number(form.total_budget) <= 0) {
+      toast.error('Total anggaran wajib diisi');
+      return;
+    }
 
     const { labels, items } = buildPlanPayload(labelGroups);
 
@@ -51,6 +57,7 @@ export default function ProjectsPage() {
       await createProject({
         name: form.name,
         description: form.description,
+        total_budget: Number(form.total_budget),
         plan_labels: labels.length > 0 ? labels : undefined,
         plan_items: items.length > 0 ? items : undefined,
       }).unwrap();
@@ -174,6 +181,20 @@ export default function ProjectsPage() {
             />
           </div>
 
+          {/* Total Anggaran - manual input */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Total Anggaran (Rp) <span className="text-red-500">*</span></label>
+            <CurrencyInput
+              required
+              min={1}
+              value={Number(form.total_budget) || 0}
+              onChange={(val) => setForm({ ...form, total_budget: String(val) })}
+              placeholder="500.000.000"
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            />
+            <p className="text-xs text-slate-400 mt-1">Batas total uang yang tersedia untuk proyek ini</p>
+          </div>
+
           {/* Plan Items Editor */}
           <LabelGroupEditor
             labelGroups={labelGroups}
@@ -182,11 +203,15 @@ export default function ProjectsPage() {
             addLabelText="+ Tambah Label"
           />
 
-          {/* Auto-calculated budget */}
-          <div className="bg-slate-50 rounded-xl p-4">
+          {/* Auto-calculated plan total */}
+          <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-slate-500">Total Rencana</span>
+              <span className="text-sm font-semibold text-slate-700">{formatCurrency(totalBudget)}</span>
+            </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-semibold text-slate-700">Total Anggaran</span>
-              <span className="text-lg font-bold text-indigo-600">{formatCurrency(totalBudget)}</span>
+              <span className="text-lg font-bold text-indigo-600">{formatCurrency(Number(form.total_budget) || 0)}</span>
             </div>
           </div>
 

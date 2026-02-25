@@ -70,7 +70,7 @@ export interface ProjectMember {
 export interface CreateProjectRequest {
   name: string;
   description?: string;
-  total_budget?: number;
+  total_budget: number;
   plan_items?: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[];
   plan_labels?: { description: string; items: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[] }[];
 }
