@@ -27,7 +27,9 @@ export default function DashboardPage() {
   const d = data?.data;
   if (!d) return null;
 
-  const budgetPct = getBudgetPercentage(d.budget.total_spent, d.budget.total_budget);
+  const isSPV = user?.role === 'SPV';
+  const budgetDisplay = isSPV ? (d.budget.total_plan_budget || 0) : d.budget.total_budget;
+  const budgetPct = getBudgetPercentage(d.budget.total_spent, budgetDisplay || d.budget.total_budget);
 
   return (
     <div className="space-y-6">
@@ -35,8 +37,8 @@ export default function DashboardPage() {
       <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 rounded-2xl p-4 sm:p-6 text-white">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-indigo-200 text-sm font-medium">{user?.role === 'SPV' ? 'Rencana Anggaran' : 'Total Anggaran'}</p>
-            <p className="text-2xl sm:text-3xl font-bold mt-1">{formatCurrency(d.budget.total_budget)}</p>
+            <p className="text-indigo-200 text-sm font-medium">{isSPV ? 'Rencana Anggaran' : 'Total Anggaran'}</p>
+            <p className="text-2xl sm:text-3xl font-bold mt-1">{formatCurrency(budgetDisplay)}</p>
           </div>
           <div className="w-14 h-14 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center">
             <Wallet className="w-7 h-7" />
@@ -55,7 +57,7 @@ export default function DashboardPage() {
               <TrendingUp size={14} />
               Tersisa
             </div>
-            <p className="text-lg font-semibold">{formatCurrency(d.budget.remaining)}</p>
+            <p className="text-lg font-semibold">{formatCurrency(isSPV ? budgetDisplay - d.budget.total_spent : d.budget.remaining)}</p>
           </div>
         </div>
         <div className="w-full bg-white/20 rounded-full h-2.5">
@@ -86,7 +88,7 @@ export default function DashboardPage() {
         <StatCard
           title="Pengeluaran"
           total={d.expenses.total_expenses}
-          subtitle={`${d.expenses.pending_expenses} pending`}
+          subtitle={formatCurrency(d.expenses.total_amount)}
           icon={<Receipt size={22} />}
           color="amber"
         />
@@ -101,12 +103,6 @@ export default function DashboardPage() {
 
       {/* Detail Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <StatusBreakdown
-          title="Pengeluaran"
-          pending={d.expenses.pending_expenses}
-          approved={d.expenses.approved_expenses}
-          rejected={d.expenses.rejected_expenses}
-        />
         <StatusBreakdown
           title="Budget Request"
           pending={d.budget_requests.pending_requests}

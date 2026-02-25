@@ -46,12 +46,10 @@ export default function OverviewTab({ projectId }: OverviewTabProps) {
   const planTotal = planItems.filter((i) => !i.is_label).reduce((sum, i) => sum + i.subtotal, 0);
 
   const isSPV = user?.role === 'SPV';
-  const budgetLabel = isSPV ? 'Rencana Anggaran' : 'Total Anggaran';
-  const budgetValue = isSPV ? planTotal : (project.total_budget || 0);
 
   const spent = project.spent_amount || 0;
-  const total = budgetValue || project.total_budget || 0;
-  const pct = getBudgetPercentage(spent, total);
+  const pctBase = isSPV ? (planTotal || project.total_budget || 0) : (project.total_budget || 0);
+  const pct = getBudgetPercentage(spent, pctBase);
 
   const openEditModal = () => {
     setEditForm({ name: project.name, description: project.description || '', status: project.status });
@@ -112,14 +110,23 @@ export default function OverviewTab({ projectId }: OverviewTabProps) {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+        <div className={`grid grid-cols-1 ${isSPV ? 'sm:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4'} gap-4 mt-6`}>
           <div className="bg-slate-50 rounded-xl p-4">
             <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
               <Wallet size={14} />
-              {budgetLabel}
+              Total Anggaran
             </div>
-            <p className="text-lg font-bold text-slate-900">{formatCurrency(budgetValue)}</p>
+            <p className="text-lg font-bold text-slate-900">{formatCurrency(project.total_budget || 0)}</p>
           </div>
+          {!isSPV && (
+            <div className="bg-slate-50 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
+                <Wallet size={14} />
+                Rencana Anggaran
+              </div>
+              <p className="text-lg font-bold text-slate-900">{formatCurrency(planTotal)}</p>
+            </div>
+          )}
           <div className="bg-slate-50 rounded-xl p-4">
             <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
               <Wallet size={14} />

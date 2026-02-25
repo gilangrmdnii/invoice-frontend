@@ -335,9 +335,12 @@ export interface BudgetRequest {
   project_id: number;
   amount: number;
   reason: string;
+  proof_url?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   requested_by: number;
   approved_by?: number;
+  approval_notes?: string;
+  approval_proof_url?: string;
   project?: Project;
   requester?: User;
   approver?: User;
@@ -349,6 +352,17 @@ export interface CreateBudgetRequest {
   project_id: number;
   amount: number;
   reason: string;
+  proof_url: string;
+}
+
+export interface ApproveBudgetRequest {
+  notes?: string;
+  proof_url: string;
+}
+
+export interface RejectBudgetRequest {
+  notes?: string;
+  proof_url: string;
 }
 
 // ==================== Dashboard ====================
@@ -359,14 +373,12 @@ export interface DashboardData {
   };
   budget: {
     total_budget: number;
+    total_plan_budget: number;
     total_spent: number;
     remaining: number;
   };
   expenses: {
     total_expenses: number;
-    pending_expenses: number;
-    approved_expenses: number;
-    rejected_expenses: number;
     total_amount: number;
   };
   budget_requests: {
