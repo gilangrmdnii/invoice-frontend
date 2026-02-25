@@ -85,6 +85,8 @@ export interface ProjectPlanItem {
   quantity: number;
   unit: string;
   unit_price: number;
+  days: number;
+  amount: number;
   subtotal: number;
   sort_order: number;
   created_at: string;
@@ -300,12 +302,9 @@ export interface Expense {
   amount: number;
   category: string;
   receipt_url?: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
   created_by: number;
-  approved_by?: number;
   project?: Project;
   creator?: User;
-  approver?: User;
   created_at: string;
   updated_at: string;
 }

@@ -96,34 +96,69 @@ export function formatNumber(n: number): string {
   return new Intl.NumberFormat('id-ID').format(n);
 }
 
-// ==================== CSV Export ====================
-export function exportToCSV(
+// ==================== Export Helpers ====================
+
+export type ExportHeader = { label: string; key: string };
+
+export function exportToExcel(
   filename: string,
-  headers: { label: string; key: string }[],
+  headers: ExportHeader[],
   rows: Record<string, unknown>[],
 ) {
-  const escape = (val: unknown): string => {
-    const str = val == null ? '' : String(val);
-    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-      return `"${str.replace(/"/g, '""')}"`;
-    }
-    return str;
-  };
+  import('xlsx').then((XLSX) => {
+    const wsData = [
+      headers.map((h) => h.label),
+      ...rows.map((row) => headers.map((h) => row[h.key] ?? '')),
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-  const headerLine = headers.map((h) => escape(h.label)).join(',');
-  const dataLines = rows.map((row) =>
-    headers.map((h) => escape(row[h.key])).join(',')
-  );
-  const csv = [headerLine, ...dataLines].join('\n');
+    // Auto column widths
+    ws['!cols'] = headers.map((h) => {
+      const maxLen = Math.max(
+        h.label.length,
+        ...rows.map((r) => String(r[h.key] ?? '').length),
+      );
+      return { wch: Math.min(Math.max(maxLen + 2, 10), 40) };
+    });
 
-  // BOM for Excel UTF-8 compatibility
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    XLSX.writeFile(wb, filename);
+  });
+}
+
+export function exportToPDF(
+  filename: string,
+  headers: ExportHeader[],
+  rows: Record<string, unknown>[],
+) {
+  import('jspdf').then(({ default: jsPDF }) => {
+    import('jspdf-autotable').then(() => {
+      const doc = new jsPDF({ orientation: headers.length > 6 ? 'landscape' : 'portrait' });
+
+      doc.setFontSize(12);
+      const title = filename.replace(/\.pdf$/i, '').replace(/_/g, ' ');
+      doc.text(title, 14, 15);
+
+      const head = [headers.map((h) => h.label)];
+      const body = rows.map((row) =>
+        headers.map((h) => {
+          const val = row[h.key];
+          if (typeof val === 'number') return formatNumber(val);
+          return val == null ? '' : String(val);
+        })
+      );
+
+      (doc as unknown as { autoTable: (opts: Record<string, unknown>) => void }).autoTable({
+        head,
+        body,
+        startY: 22,
+        styles: { fontSize: 8, cellPadding: 3 },
+        headStyles: { fillColor: [74, 74, 74], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+      });
+
+      doc.save(filename);
+    });
+  });
 }

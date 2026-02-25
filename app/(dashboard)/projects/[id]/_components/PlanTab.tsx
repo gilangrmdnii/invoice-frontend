@@ -141,10 +141,12 @@ export default function PlanTab({ projectId }: PlanTabProps) {
               <thead>
                 <tr className="border-b border-slate-100">
                   <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Keterangan</th>
-                  <th className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4 w-20">Qty</th>
-                  <th className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4 w-20">Unit</th>
-                  <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4 w-36">Harga Satuan</th>
-                  <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4 w-36">Subtotal</th>
+                  <th className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-4 w-16">Qty</th>
+                  <th className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-4 w-16">Unit</th>
+                  <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-4 w-28">Harga</th>
+                  <th className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-4 w-16">Hari</th>
+                  <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-4 w-28">Jumlah</th>
+                  <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4 w-32">Subtotal</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -157,16 +159,18 @@ export default function PlanTab({ projectId }: PlanTabProps) {
                 {standaloneRows.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-3 text-sm text-slate-900">{item.description}</td>
-                    <td className="px-6 py-3 text-sm text-slate-600 text-center">{item.quantity}</td>
-                    <td className="px-6 py-3 text-sm text-slate-600 text-center">{item.unit}</td>
-                    <td className="px-6 py-3 text-sm text-slate-600 text-right">{formatCurrency(item.unit_price)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 text-center">{item.quantity}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 text-center">{item.unit}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 text-right">{formatCurrency(item.unit_price)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 text-center">{item.days || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 text-right">{item.amount ? formatCurrency(item.amount) : '-'}</td>
                     <td className="px-6 py-3 text-sm font-medium text-slate-900 text-right">{formatCurrency(item.subtotal)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-slate-200 bg-slate-50">
-                  <td colSpan={4} className="px-6 py-4 text-sm font-semibold text-slate-700 text-right">Total Anggaran</td>
+                  <td colSpan={6} className="px-6 py-4 text-sm font-semibold text-slate-700 text-right">Total Anggaran</td>
                   <td className="px-6 py-4 text-base font-bold text-indigo-600 text-right">{formatCurrency(totalAnggaran)}</td>
                 </tr>
               </tfoot>
@@ -178,18 +182,20 @@ export default function PlanTab({ projectId }: PlanTabProps) {
   );
 }
 
-function LabelGroupRows({ label, children }: { label: string; children: { id: number; description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[] }) {
+function LabelGroupRows({ label, children }: { label: string; children: { id: number; description: string; quantity: number; unit: string; unit_price: number; days: number; amount: number; subtotal: number }[] }) {
   return (
     <>
       <tr className="bg-slate-50/80">
-        <td colSpan={5} className="px-6 py-3 text-sm font-semibold text-slate-800">{label}</td>
+        <td colSpan={7} className="px-6 py-3 text-sm font-semibold text-slate-800">{label}</td>
       </tr>
       {children.map((item) => (
         <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
           <td className="px-6 py-3 text-sm text-slate-900 pl-10">{item.description}</td>
-          <td className="px-6 py-3 text-sm text-slate-600 text-center">{item.quantity}</td>
-          <td className="px-6 py-3 text-sm text-slate-600 text-center">{item.unit}</td>
-          <td className="px-6 py-3 text-sm text-slate-600 text-right">{formatCurrency(item.unit_price)}</td>
+          <td className="px-4 py-3 text-sm text-slate-600 text-center">{item.quantity}</td>
+          <td className="px-4 py-3 text-sm text-slate-600 text-center">{item.unit}</td>
+          <td className="px-4 py-3 text-sm text-slate-600 text-right">{formatCurrency(item.unit_price)}</td>
+          <td className="px-4 py-3 text-sm text-slate-600 text-center">{item.days || '-'}</td>
+          <td className="px-4 py-3 text-sm text-slate-600 text-right">{item.amount ? formatCurrency(item.amount) : '-'}</td>
           <td className="px-6 py-3 text-sm font-medium text-slate-900 text-right">{formatCurrency(item.subtotal)}</td>
         </tr>
       ))}

@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, use, useRef, useState } from 'react';
+import { use, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGetInvoiceQuery, useCreatePaymentMutation, useDeletePaymentMutation } from '@/lib/api/invoiceApi';
 import { useGetProjectPlanQuery } from '@/lib/api/projectApi';
@@ -8,7 +8,7 @@ import { useGetCompanySettingsQuery } from '@/lib/api/companySettingsApi';
 import { useAppSelector } from '@/lib/hooks';
 import { formatNumber, formatCurrency, formatDate, terbilang, numberToWords } from '@/lib/utils';
 import { INVOICE_TYPE_LABELS, PAYMENT_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/lib/types';
-import type { InvoiceItem, ProjectPlanItem, PaymentMethod, PaymentStatus } from '@/lib/types';
+import type { Invoice, CompanySettings, InvoiceItem, ProjectPlanItem, PaymentMethod, PaymentStatus } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
 import Badge from '@/components/ui/Badge';
@@ -127,8 +127,9 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const groups = buildGroupedItems(items);
   const dpPct = invoice.dp_percentage;
   const dpAmount = dpPct ? invoice.amount * dpPct / 100 : null;
-  const pelunasan = dpPct ? invoice.amount - (dpAmount || 0) : null;
-  const amountInWords = isID ? terbilang(invoice.amount) : numberToWords(invoice.amount);
+  // Terbilang uses the payable amount: DP amount if DP exists, otherwise total
+  const terbilangAmount = dpAmount ?? invoice.amount;
+  const amountInWords = isID ? terbilang(terbilangAmount) : numberToWords(terbilangAmount);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
 
@@ -192,7 +193,17 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
       {/* Rencana Anggaran Tab */}
       {activeTab === 'plan' && (
-        <PlanTab planItems={planData?.data || []} />
+        <PlanTab
+          planItems={planData?.data || []}
+          invoice={invoice}
+          company={company ?? undefined}
+          apiBase={apiBase}
+          companyName={companyName}
+          isID={isID}
+          thBg={thBg}
+          labelBg={labelBg}
+          borderColor={borderColor}
+        />
       )}
 
       {/* Invoice Preview (Total Anggaran Tab) */}
@@ -345,18 +356,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                   </tr>
                 )}
 
-                {/* PELUNASAN row */}
-                {dpPct != null && pelunasan !== null && (
-                  <tr>
-                    <td colSpan={6} style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
-                      {isID ? 'PELUNASAN' : 'BALANCE DUE'}
-                    </td>
-                    <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
-                      {formatNumber(pelunasan)}
-                    </td>
-                  </tr>
-                )}
-
                 {/* PPN row */}
                 {invoice.ppn_percentage > 0 && (
                   <tr>
@@ -433,26 +432,8 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
               <p style={{ fontSize: 10, marginBottom: 2 }}>{isID ? 'Terimakasih.' : 'Thank you.'}</p>
               <p style={{ fontSize: 10, marginBottom: 16 }}>{isID ? 'Hormat Kami' : 'Best regards'}</p>
 
-              {/* E-meterai placeholder */}
-              <div style={{ position: 'relative', width: 120, height: 120, marginBottom: 8 }}>
-                <div style={{
-                  width: 120,
-                  height: 120,
-                  border: '2px dashed #ccc',
-                  borderRadius: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'column',
-                  color: '#bbb',
-                  fontSize: 9,
-                  textAlign: 'center',
-                  background: '#fafafa',
-                }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>E-METERAI</div>
-                  <div>Rp 10.000</div>
-                </div>
-              </div>
+              {/* E-meterai space */}
+              <div style={{ width: 120, height: 120, marginBottom: 8 }} />
 
               <div style={{ borderBottom: '1px solid #333', width: 180, marginBottom: 4 }}></div>
               <p style={{ fontSize: 11, fontWeight: 700 }}>{company?.signatory_name || '________________'}</p>
@@ -665,7 +646,17 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   );
 }
 
-function PlanTab({ planItems }: { planItems: ProjectPlanItem[] }) {
+function PlanTab({ planItems, invoice, company, apiBase, companyName, isID, thBg, labelBg, borderColor }: {
+  planItems: ProjectPlanItem[];
+  invoice: Invoice;
+  company?: CompanySettings;
+  apiBase: string;
+  companyName: string;
+  isID: boolean;
+  thBg: string;
+  labelBg: string;
+  borderColor: string;
+}) {
   if (planItems.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center">
@@ -689,46 +680,161 @@ function PlanTab({ planItems }: { planItems: ProjectPlanItem[] }) {
 
   const grandTotal = planItems.filter((i) => !i.is_label).reduce((sum, i) => sum + i.subtotal, 0);
 
+  // Compute label totals
+  const labelTotals: Record<number, number> = {};
+  for (const group of groups) {
+    if (group.label) {
+      labelTotals[group.label.id!] = group.children.reduce((s, c) => s + c.subtotal, 0);
+    }
+  }
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
+    <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-8 shadow-sm overflow-x-auto">
+      <div style={{ maxWidth: '210mm', margin: '0 auto', fontFamily: "'Segoe UI', Arial, Helvetica, sans-serif", fontSize: 10, color: '#1a1a1a', lineHeight: 1.5, position: 'relative', minHeight: '297mm' }}>
+
+        {/* ===== HEADER: Logo + Date/Number ===== */}
+        <div style={{ marginBottom: 20 }}>
+          {company?.logo_url ? (
+            <img
+              src={`${apiBase}${company.logo_url}`}
+              alt="Logo"
+              style={{ height: 70, marginBottom: 6 }}
+            />
+          ) : (
+            <div style={{ marginBottom: 6 }}>
+              <div style={{ fontSize: 28, fontWeight: 700, color: '#222', lineHeight: 1.2 }}>
+                {companyName}
+              </div>
+            </div>
+          )}
+          <div style={{ fontSize: 10, color: '#333' }}>
+            {invoice.invoice_date && (
+              <span>
+                Jakarta, {new Date(invoice.invoice_date).toLocaleDateString(isID ? 'id-ID' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 10, color: '#333' }}>
+            {invoice.invoice_number}
+          </div>
+        </div>
+
+        {/* ===== KEPADA ===== */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 10, color: '#333' }}>{isID ? 'Kepada Yth.' : 'To'}</p>
+          <p style={{ fontSize: 11, fontWeight: 700 }}>{invoice.recipient_name}</p>
+          {invoice.attention && <p style={{ fontSize: 10 }}>{invoice.attention}</p>}
+          {invoice.recipient_address && <p style={{ fontSize: 10, color: '#333' }}>{invoice.recipient_address}</p>}
+        </div>
+
+        {/* ===== TITLE ===== */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <svg width="16" height="20" viewBox="0 0 16 20" style={{ flexShrink: 0 }}>
+            <path d="M0 2 L16 10 L0 18 Z" fill="#2563eb" />
+          </svg>
+          <span style={{ fontSize: 18, letterSpacing: 1.5 }}>
+            <span style={{ color: '#2563eb', fontWeight: 400 }}>RENCANA</span>
+            <span style={{ color: '#888', fontWeight: 300 }}> ANGGARAN</span>
+          </span>
+        </div>
+
+        {/* ===== PROJECT NAME ===== */}
+        {invoice.project_name && (
+          <p style={{ fontSize: 11, fontWeight: 700, fontStyle: 'italic', marginBottom: 8 }}>
+            {invoice.project_name}
+          </p>
+        )}
+
+        {/* ===== ITEMS TABLE ===== */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 0, fontSize: 10 }}>
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50">
-              <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Keterangan</th>
-              <th className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-4 w-20">Qty</th>
-              <th className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-4 w-20">Unit</th>
-              <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4 w-32">Harga</th>
-              <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4 w-32">Subtotal</th>
+            <tr>
+              <th style={{ background: thBg, color: 'white', padding: '6px 6px', textAlign: 'center', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 24, borderRight: '1px solid #666' }}>&nbsp;</th>
+              <th style={{ background: thBg, color: 'white', padding: '6px 8px', textAlign: 'center', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', borderRight: '1px solid #666' }}>
+                {isID ? 'KETERANGAN' : 'DESCRIPTION'}
+              </th>
+              <th style={{ background: thBg, color: 'white', padding: '6px 8px', textAlign: 'center', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 70, borderRight: '1px solid #666' }}>
+                {isID ? 'HARGA' : 'PRICE'}
+              </th>
+              <th style={{ background: thBg, color: 'white', padding: '6px 6px', textAlign: 'center', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 40, borderRight: '1px solid #666' }}>QTY</th>
+              <th style={{ background: thBg, color: 'white', padding: '6px 6px', textAlign: 'center', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 40, borderRight: '1px solid #666' }}>UNIT</th>
+              <th style={{ background: thBg, color: 'white', padding: '6px 6px', textAlign: 'center', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 35, borderRight: '1px solid #666' }}>HARI</th>
+              <th style={{ background: thBg, color: 'white', padding: '6px 8px', textAlign: 'center', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 70, borderRight: '1px solid #666' }}>JUMLAH (Rp)</th>
+              <th style={{ background: thBg, color: 'white', padding: '6px 8px', textAlign: 'center', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 80, borderRight: '1px solid #666' }}>SUB TOTAL (Rp)</th>
+              <th style={{ background: thBg, color: 'white', padding: '6px 8px', textAlign: 'center', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', width: 80 }}>TOTAL (Rp)</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
-            {groups.map((group, gIdx) => (
-              <Fragment key={gIdx}>
-                {group.label && (
-                  <tr className="bg-slate-50">
-                    <td colSpan={5} className="px-6 py-3 text-sm font-bold text-slate-800">
+          <tbody>
+            {groups.map((group, gIdx) => {
+              const rows: React.ReactNode[] = [];
+
+              if (group.label) {
+                rows.push(
+                  <tr key={`label-${gIdx}`}>
+                    <td style={{ background: labelBg, padding: '4px 6px', borderBottom: `1px solid ${borderColor}`, borderRight: `1px solid ${borderColor}`, fontWeight: 700, fontSize: 10 }} colSpan={8}>
                       {group.label.description}
                     </td>
+                    <td style={{ background: labelBg, padding: '4px 8px', borderBottom: `1px solid ${borderColor}` }}>&nbsp;</td>
                   </tr>
-                )}
-                {group.children.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/50">
-                    <td className="px-6 py-3 text-sm text-slate-700 pl-10">{item.description}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600 text-center">{item.quantity}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600 text-center">{item.unit}</td>
-                    <td className="px-6 py-3 text-sm text-slate-700 text-right">{formatCurrency(item.unit_price)}</td>
-                    <td className="px-6 py-3 text-sm font-medium text-slate-900 text-right">{formatCurrency(item.subtotal)}</td>
+                );
+              }
+
+              group.children.forEach((child, cIdx) => {
+                const isLast = cIdx === group.children.length - 1;
+                rows.push(
+                  <tr key={`item-${gIdx}-${cIdx}`}>
+                    <td style={{ padding: '3px 6px', borderBottom: `1px solid ${borderColor}`, borderRight: `1px solid ${borderColor}`, textAlign: 'center', fontSize: 10 }}>&nbsp;</td>
+                    <td style={{ padding: '3px 8px', borderBottom: `1px solid ${borderColor}`, borderRight: `1px solid ${borderColor}`, fontSize: 10 }}>{child.description}</td>
+                    <td style={{ padding: '3px 8px', borderBottom: `1px solid ${borderColor}`, borderRight: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'right' }}>
+                      {child.unit_price > 0 ? formatNumber(child.unit_price) : ''}
+                    </td>
+                    <td style={{ padding: '3px 6px', borderBottom: `1px solid ${borderColor}`, borderRight: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'center' }}>
+                      {child.quantity}
+                    </td>
+                    <td style={{ padding: '3px 6px', borderBottom: `1px solid ${borderColor}`, borderRight: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'center' }}>
+                      {child.unit}
+                    </td>
+                    <td style={{ padding: '3px 6px', borderBottom: `1px solid ${borderColor}`, borderRight: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'center' }}>
+                      {child.days || '-'}
+                    </td>
+                    <td style={{ padding: '3px 8px', borderBottom: `1px solid ${borderColor}`, borderRight: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'right' }}>
+                      {child.amount ? formatNumber(child.amount) : '-'}
+                    </td>
+                    <td style={{ padding: '3px 8px', borderBottom: `1px solid ${borderColor}`, borderRight: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'right' }}>
+                      {formatNumber(child.subtotal)}
+                    </td>
+                    <td style={{ padding: '3px 8px', borderBottom: `1px solid ${borderColor}`, fontSize: 10, textAlign: 'right', fontWeight: isLast && group.label ? 700 : 'normal' }}>
+                      {isLast && group.label && labelTotals[group.label.id!] !== undefined
+                        ? formatNumber(labelTotals[group.label.id!])
+                        : isLast && !group.label
+                          ? formatNumber(child.subtotal)
+                          : ''
+                      }
+                    </td>
                   </tr>
-                ))}
-              </Fragment>
-            ))}
-            <tr className="border-t-2 border-slate-200 bg-slate-50">
-              <td colSpan={4} className="px-6 py-4 text-sm font-bold text-slate-900 text-right">Total Rencana Anggaran</td>
-              <td className="px-6 py-4 text-sm font-bold text-indigo-600 text-right">{formatCurrency(grandTotal)}</td>
+                );
+              });
+
+              return rows;
+            })}
+
+            {/* TOTAL row */}
+            <tr>
+              <td colSpan={8} style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
+                TOTAL RENCANA ANGGARAN
+              </td>
+              <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderColor}` }}>
+                {formatNumber(grandTotal)}
+              </td>
             </tr>
           </tbody>
         </table>
+
+        {/* ===== TERBILANG ===== */}
+        <div style={{ marginTop: 20, marginBottom: 28, fontSize: 10 }}>
+          <span>{isID ? 'Terbilang' : 'Amount in words'} : {isID ? terbilang(grandTotal) : numberToWords(grandTotal)}</span>
+        </div>
+
       </div>
     </div>
   );

@@ -12,6 +12,8 @@ export interface FormItem {
   quantity: number;
   unit: string;
   unit_price: number;
+  days: number;
+  amount: number;
 }
 
 export interface LabelGroup {
@@ -24,13 +26,15 @@ export const EMPTY_FORM_ITEM: FormItem = {
   quantity: 1,
   unit: 'unit',
   unit_price: 0,
+  days: 0,
+  amount: 0,
 };
 
 // ============ Helper Functions ============
 
 export function buildPlanPayload(labelGroups: LabelGroup[]) {
-  const labels: { description: string; items: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[] }[] = [];
-  const items: { description: string; quantity: number; unit: string; unit_price: number; subtotal: number }[] = [];
+  const labels: { description: string; items: { description: string; quantity: number; unit: string; unit_price: number; days: number; amount: number; subtotal: number }[] }[] = [];
+  const items: { description: string; quantity: number; unit: string; unit_price: number; days: number; amount: number; subtotal: number }[] = [];
 
   for (const group of labelGroups) {
     const validItems = group.items.filter((i) => i.description && i.unit_price > 0);
@@ -41,6 +45,8 @@ export function buildPlanPayload(labelGroups: LabelGroup[]) {
       quantity: Number(i.quantity),
       unit: i.unit,
       unit_price: Number(i.unit_price),
+      days: Number(i.days) || 0,
+      amount: Number(i.amount) || 0,
       subtotal: Number(i.quantity) * Number(i.unit_price),
     }));
 
@@ -73,6 +79,8 @@ export function planItemsToLabelGroups(flatItems: ProjectPlanItem[]): LabelGroup
         quantity: c.quantity,
         unit: c.unit,
         unit_price: c.unit_price,
+        days: c.days || 0,
+        amount: c.amount || 0,
       })),
     });
   }
@@ -85,6 +93,8 @@ export function planItemsToLabelGroups(flatItems: ProjectPlanItem[]): LabelGroup
         quantity: c.quantity,
         unit: c.unit,
         unit_price: c.unit_price,
+        days: c.days || 0,
+        amount: c.amount || 0,
       })),
     });
   }
@@ -194,13 +204,15 @@ export default function LabelGroupEditor({
 
             {/* Items table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[500px]">
+              <table className="w-full text-sm min-w-[700px]">
                 <thead>
                   <tr className="bg-white border-b border-slate-100">
                     <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500">Keterangan</th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 w-20">Qty</th>
+                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 w-16">Qty</th>
                     <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 w-20">Unit</th>
                     <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 w-32">Harga</th>
+                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 w-16">Hari</th>
+                    <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 w-32">Jumlah</th>
                     <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 w-32">Subtotal</th>
                     <th className="w-8"></th>
                   </tr>
@@ -242,6 +254,23 @@ export default function LabelGroupEditor({
                           min={1}
                           value={item.unit_price || 0}
                           onChange={(val) => updateGroupItem(gIdx, iIdx, 'unit_price', val)}
+                          className="w-full px-2 py-1.5 text-sm text-right border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          value={item.days || ''}
+                          onChange={(e) => updateGroupItem(gIdx, iIdx, 'days', Number(e.target.value))}
+                          placeholder="0"
+                          className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <CurrencyInput
+                          value={item.amount || 0}
+                          onChange={(val) => updateGroupItem(gIdx, iIdx, 'amount', val)}
                           className="w-full px-2 py-1.5 text-sm text-right border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
                         />
                       </td>

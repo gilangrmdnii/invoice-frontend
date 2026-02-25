@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import type { ApiResponse, Expense, CreateExpenseRequest, UpdateExpenseRequest, ApprovalRequest } from '../types';
+import type { ApiResponse, Expense, CreateExpenseRequest, UpdateExpenseRequest } from '../types';
 
 export const expenseApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -17,7 +17,7 @@ export const expenseApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Expense', 'Dashboard'],
+      invalidatesTags: ['Expense', 'Dashboard', 'Project'],
     }),
     updateExpense: builder.mutation<ApiResponse<Expense>, { id: number; body: UpdateExpenseRequest }>({
       query: ({ id, body }) => ({
@@ -25,30 +25,14 @@ export const expenseApi = baseApi.injectEndpoints({
         method: 'PUT',
         body,
       }),
-      invalidatesTags: ['Expense', 'Dashboard'],
+      invalidatesTags: ['Expense', 'Dashboard', 'Project'],
     }),
     deleteExpense: builder.mutation<ApiResponse<null>, number>({
       query: (id) => ({
         url: `/expenses/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Expense', 'Dashboard'],
-    }),
-    approveExpense: builder.mutation<ApiResponse<Expense>, { id: number; body?: ApprovalRequest }>({
-      query: ({ id, body }) => ({
-        url: `/expenses/${id}/approve`,
-        method: 'POST',
-        body: body || {},
-      }),
-      invalidatesTags: ['Expense', 'Dashboard', 'Notification'],
-    }),
-    rejectExpense: builder.mutation<ApiResponse<Expense>, { id: number; body?: ApprovalRequest }>({
-      query: ({ id, body }) => ({
-        url: `/expenses/${id}/reject`,
-        method: 'POST',
-        body: body || {},
-      }),
-      invalidatesTags: ['Expense', 'Dashboard', 'Notification'],
+      invalidatesTags: ['Expense', 'Dashboard', 'Project'],
     }),
   }),
 });
@@ -59,6 +43,4 @@ export const {
   useCreateExpenseMutation,
   useUpdateExpenseMutation,
   useDeleteExpenseMutation,
-  useApproveExpenseMutation,
-  useRejectExpenseMutation,
 } = expenseApi;
