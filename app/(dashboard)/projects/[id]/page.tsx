@@ -9,8 +9,9 @@ import PlanTab from './_components/PlanTab';
 import InvoiceTab from './_components/InvoiceTab';
 import ExpenseTab from './_components/ExpenseTab';
 import BudgetRequestTab from './_components/BudgetRequestTab';
+import WorkersTab from './_components/WorkersTab';
 import clsx from 'clsx';
-import { FolderKanban, ClipboardList, FileText, Receipt, Wallet } from 'lucide-react';
+import { FolderKanban, ClipboardList, FileText, Receipt, Wallet, HardHat } from 'lucide-react';
 
 const TABS = [
   { key: 'overview', label: 'Overview', icon: FolderKanban },
@@ -18,6 +19,7 @@ const TABS = [
   { key: 'invoice', label: 'Invoice', icon: FileText },
   { key: 'expenses', label: 'Pengeluaran', icon: Receipt },
   { key: 'budget-requests', label: 'Budget Request', icon: Wallet },
+  { key: 'workers', label: 'Tim Lapangan', icon: HardHat },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -46,13 +48,8 @@ export default function ProjectDetailPage() {
     router.replace(`/projects/${id}${qs ? `?${qs}` : ''}`, { scroll: false });
   };
 
-  // Filter tabs: hide invoice tab for non-FINANCE/OWNER roles
-  const visibleTabs = TABS.filter((t) => {
-    if (t.key === 'invoice' && user?.role !== 'FINANCE' && user?.role !== 'OWNER') {
-      return false;
-    }
-    return true;
-  });
+  // All roles can see all tabs (QC and SPV can create invoices)
+  const visibleTabs = TABS;
 
   if (isLoading) return <LoadingSpinner />;
   if (!project) return <div className="text-center text-slate-500 py-20">Proyek tidak ditemukan</div>;
@@ -91,6 +88,7 @@ export default function ProjectDetailPage() {
       {activeTab === 'invoice' && <InvoiceTab projectId={id} />}
       {activeTab === 'expenses' && <ExpenseTab projectId={id} />}
       {activeTab === 'budget-requests' && <BudgetRequestTab projectId={id} />}
+      {activeTab === 'workers' && <WorkersTab projectId={id} />}
     </div>
   );
 }

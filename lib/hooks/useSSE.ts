@@ -44,6 +44,10 @@ export function useSSE() {
       dispatch(baseApi.util.invalidateTags(['Project', 'Dashboard']));
     });
 
+    es.addEventListener('QC_DOCUMENT_CREATED', () => {
+      dispatch(baseApi.util.invalidateTags(['QCDocument', 'Notification']));
+    });
+
     es.onerror = () => {
       // EventSource will auto-reconnect on error
     };

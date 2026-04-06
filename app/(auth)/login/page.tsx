@@ -57,7 +57,7 @@ export default function LoginPage() {
               <div className="text-indigo-200 text-sm">Notifikasi</div>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <div className="text-2xl font-bold text-white">3 Role</div>
+              <div className="text-2xl font-bold text-white">4 Role</div>
               <div className="text-indigo-200 text-sm">Akses Kontrol</div>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">

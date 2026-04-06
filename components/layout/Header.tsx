@@ -13,8 +13,11 @@ const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/projects': 'Proyek',
   '/invoices': 'Invoice',
+  '/qc-documents': 'Dokumen QC',
   '/notifications': 'Notifikasi',
+  '/users': 'Pengguna',
   '/audit-logs': 'Audit Log',
+  '/settings': 'Pengaturan',
 };
 
 export default function Header({ onMenuClick }: HeaderProps) {

@@ -78,8 +78,9 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
     { label: '', items: [{ ...EMPTY_FORM_ITEM }] },
   ]);
 
-  const canCreate = user?.role === 'FINANCE';
-  const canApprove = user?.role === 'OWNER';
+  const isFieldRole = user?.role === 'SPV' || user?.role === 'QC';
+  const canCreate = isFieldRole || user?.role === 'FINANCE';
+  const canApprove = user?.role === 'FINANCE' || user?.role === 'OWNER';
   const allInvoices = data?.data || [];
   const invoices = allInvoices.filter((inv) => inv.project_id === projectId);
   const filtered = filterStatus === 'ALL' ? invoices : invoices.filter((i) => i.status === filterStatus);
@@ -330,7 +331,7 @@ export default function InvoiceTab({ projectId }: InvoiceTabProps) {
                             </button>
                           </>
                         )}
-                        {canCreate && inv.status === 'PENDING' && (
+                        {inv.status === 'PENDING' && (isFieldRole ? inv.created_by === user?.id : canCreate) && (
                           <button
                             onClick={() => setConfirmDelete(inv.id)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"

@@ -18,6 +18,7 @@ import {
   Receipt,
   Wallet,
   AlertCircle,
+  ClipboardCheck,
 } from 'lucide-react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
@@ -48,6 +49,8 @@ export default function NotificationsPage() {
     const type = notif.type.toUpperCase();
     if (type.includes('INVOICE') && notif.reference_id) {
       router.push(`/invoices/${notif.reference_id}`);
+    } else if (type === 'QC_DOCUMENT_CREATED') {
+      router.push('/qc-documents');
     }
   };
 
@@ -64,6 +67,7 @@ export default function NotificationsPage() {
     if (type.includes('INVOICE')) return <FileText size={18} className="text-indigo-500" />;
     if (type.includes('EXPENSE')) return <Receipt size={18} className="text-amber-500" />;
     if (type.includes('BUDGET')) return <Wallet size={18} className="text-emerald-500" />;
+    if (type.includes('QC_DOCUMENT')) return <ClipboardCheck size={18} className="text-teal-500" />;
     return <AlertCircle size={18} className="text-slate-400" />;
   };
 

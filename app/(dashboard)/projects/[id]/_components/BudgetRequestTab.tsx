@@ -19,7 +19,7 @@ import ExportDropdown from '@/components/ui/ExportDropdown';
 import { Plus, Wallet, CheckCircle, XCircle, Upload, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 interface BudgetRequestTabProps {
   projectId: number;
@@ -59,7 +59,7 @@ export default function BudgetRequestTab({ projectId }: BudgetRequestTabProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('Ukuran file maksimal 5MB');
+      toast.error('Ukuran file maksimal 50MB');
       e.target.value = '';
       return;
     }
@@ -186,7 +186,7 @@ export default function BudgetRequestTab({ projectId }: BudgetRequestTabProps) {
               }))}
             />
           )}
-          {user?.role === 'SPV' && (
+          {(user?.role === 'SPV' || user?.role === 'QC') && (
             <button
               onClick={() => setShowModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
@@ -318,8 +318,8 @@ export default function BudgetRequestTab({ projectId }: BudgetRequestTabProps) {
             ) : (
               <label className="flex items-center justify-center gap-2 w-full p-4 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all">
                 <Upload size={18} className="text-slate-400" />
-                <span className="text-sm text-slate-500">{uploading ? 'Mengupload...' : 'Upload bukti (JPG, PNG, PDF max 5MB)'}</span>
-                <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => handleFileUpload(e, 'create')} className="hidden" disabled={uploading} />
+                <span className="text-sm text-slate-500">{uploading ? 'Mengupload...' : 'Upload bukti (JPG, PNG, PDF, Audio, Video max 50MB)'}</span>
+                <input type="file" accept=".jpg,.jpeg,.png,.pdf,.mp3,.wav,.ogg,.m4a,.mp4,.mov,.avi,.webm" onChange={(e) => handleFileUpload(e, 'create')} className="hidden" disabled={uploading} />
               </label>
             )}
           </div>
@@ -381,8 +381,8 @@ export default function BudgetRequestTab({ projectId }: BudgetRequestTabProps) {
             ) : (
               <label className="flex items-center justify-center gap-2 w-full p-4 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all">
                 <Upload size={18} className="text-slate-400" />
-                <span className="text-sm text-slate-500">{uploading ? 'Mengupload...' : 'Upload bukti (JPG, PNG, PDF max 5MB)'}</span>
-                <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => handleFileUpload(e, 'approve')} className="hidden" disabled={uploading} />
+                <span className="text-sm text-slate-500">{uploading ? 'Mengupload...' : 'Upload bukti (JPG, PNG, PDF, Audio, Video max 50MB)'}</span>
+                <input type="file" accept=".jpg,.jpeg,.png,.pdf,.mp3,.wav,.ogg,.m4a,.mp4,.mov,.avi,.webm" onChange={(e) => handleFileUpload(e, 'approve')} className="hidden" disabled={uploading} />
               </label>
             )}
           </div>
@@ -444,8 +444,8 @@ export default function BudgetRequestTab({ projectId }: BudgetRequestTabProps) {
             ) : (
               <label className="flex items-center justify-center gap-2 w-full p-4 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all">
                 <Upload size={18} className="text-slate-400" />
-                <span className="text-sm text-slate-500">{uploading ? 'Mengupload...' : 'Upload bukti (JPG, PNG, PDF max 5MB)'}</span>
-                <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => handleFileUpload(e, 'reject')} className="hidden" disabled={uploading} />
+                <span className="text-sm text-slate-500">{uploading ? 'Mengupload...' : 'Upload bukti (JPG, PNG, PDF, Audio, Video max 50MB)'}</span>
+                <input type="file" accept=".jpg,.jpeg,.png,.pdf,.mp3,.wav,.ogg,.m4a,.mp4,.mov,.avi,.webm" onChange={(e) => handleFileUpload(e, 'reject')} className="hidden" disabled={uploading} />
               </label>
             )}
           </div>

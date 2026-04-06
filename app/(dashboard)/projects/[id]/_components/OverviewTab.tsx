@@ -45,7 +45,7 @@ export default function OverviewTab({ projectId }: OverviewTabProps) {
   const planItems = planData?.data || [];
   const planTotal = planItems.filter((i) => !i.is_label).reduce((sum, i) => sum + i.subtotal, 0);
 
-  const isSPV = user?.role === 'SPV';
+  const isSPV = user?.role === 'SPV' || user?.role === 'QC';
 
   const spent = project.spent_amount || 0;
   const pctBase = isSPV ? (planTotal || project.total_budget || 0) : (project.total_budget || 0);
@@ -311,11 +311,12 @@ function AddMemberModal({
   onAdd: (userId: number) => void;
   isAdding: boolean;
 }) {
-  const { data: usersData, isLoading } = useGetUsersQuery('SPV', { skip: !isOpen });
+  const { data: usersData, isLoading } = useGetUsersQuery(undefined, { skip: !isOpen });
   const [search, setSearch] = useState('');
 
   const users = (usersData?.data || []).filter(
     (u) =>
+      (u.role === 'SPV' || u.role === 'QC') &&
       !existingMemberIds.includes(u.id) &&
       (u.full_name.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase()))
@@ -340,7 +341,7 @@ function AddMemberModal({
             <p className="text-sm text-slate-400 text-center py-6">Memuat user...</p>
           ) : users.length === 0 ? (
             <p className="text-sm text-slate-400 text-center py-6">
-              {search ? 'Tidak ditemukan' : 'Semua SPV sudah menjadi anggota'}
+              {search ? 'Tidak ditemukan' : 'Semua SPV/QC sudah menjadi anggota'}
             </p>
           ) : (
             users.map((u) => (

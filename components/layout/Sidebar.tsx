@@ -17,6 +17,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -38,6 +39,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/projects', label: 'Proyek', icon: FolderKanban },
+    { href: '/qc-documents', label: 'Dokumen QC', icon: ClipboardCheck },
     { href: '/notifications', label: 'Notifikasi', icon: Bell },
     ...(user?.role === 'FINANCE' || user?.role === 'OWNER'
       ? [
@@ -45,7 +47,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         { href: '/audit-logs', label: 'Audit Log', icon: ScrollText },
       ]
       : []),
-    ...(user?.role === 'OWNER'
+    ...(user?.role === 'FINANCE' || user?.role === 'OWNER'
       ? [
         { href: '/settings', label: 'Pengaturan', icon: Settings },
       ]

@@ -2,7 +2,7 @@ export interface User {
   id: number;
   full_name: string;
   email: string;
-  role: 'SPV' | 'FINANCE' | 'OWNER';
+  role: 'SPV' | 'QC' | 'FINANCE' | 'OWNER';
   created_at: string;
   updated_at: string;
 }
@@ -16,21 +16,21 @@ export interface RegisterRequest {
   full_name: string;
   email: string;
   password: string;
-  role: 'SPV' | 'FINANCE' | 'OWNER';
+  role: 'SPV' | 'QC' | 'FINANCE' | 'OWNER';
 }
 
 export interface CreateUserRequest {
   full_name: string;
   email: string;
   password: string;
-  role: 'SPV' | 'FINANCE' | 'OWNER';
+  role: 'SPV' | 'QC' | 'FINANCE' | 'OWNER';
 }
 
 export interface UpdateUserRequest {
   full_name?: string;
   email?: string;
   password?: string;
-  role?: 'SPV' | 'FINANCE' | 'OWNER';
+  role?: 'SPV' | 'QC' | 'FINANCE' | 'OWNER';
 }
 
 export interface AuthResponse {
@@ -420,6 +420,74 @@ export interface AuditLog {
   entity_id: number;
   details: string;
   created_at: string;
+}
+
+// ==================== QC Document ====================
+export type DocumentType = 'IMAGE' | 'AUDIO' | 'VIDEO' | 'DOCUMENT';
+
+export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+  IMAGE: 'Gambar',
+  AUDIO: 'Audio',
+  VIDEO: 'Video',
+  DOCUMENT: 'Dokumen',
+};
+
+export interface QCDocument {
+  id: number;
+  project_id: number;
+  title: string;
+  description: string;
+  document_type: DocumentType;
+  file_url: string;
+  uploaded_by: number;
+  uploader_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateQCDocumentRequest {
+  project_id: number;
+  title: string;
+  description?: string;
+  document_type: DocumentType;
+  file_url: string;
+}
+
+export interface UpdateQCDocumentRequest {
+  title?: string;
+  description?: string;
+  document_type?: DocumentType;
+  file_url?: string;
+}
+
+// ==================== Project Worker ====================
+export interface ProjectWorker {
+  id: number;
+  project_id: number;
+  full_name: string;
+  role: string;
+  phone: string;
+  daily_wage: number;
+  is_active: boolean;
+  added_by: number;
+  adder_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateProjectWorkerRequest {
+  full_name: string;
+  role: string;
+  phone?: string;
+  daily_wage?: number;
+}
+
+export interface UpdateProjectWorkerRequest {
+  full_name?: string;
+  role?: string;
+  phone?: string;
+  daily_wage?: number;
+  is_active?: boolean;
 }
 
 // ==================== Upload ====================

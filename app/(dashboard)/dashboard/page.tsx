@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const d = data?.data;
   if (!d) return null;
 
-  const isSPV = user?.role === 'SPV';
+  const isSPV = user?.role === 'SPV' || user?.role === 'QC';
   const budgetDisplay = isSPV ? (d.budget.total_plan_budget || 0) : d.budget.total_budget;
   const budgetPct = getBudgetPercentage(d.budget.total_spent, budgetDisplay || d.budget.total_budget);
 

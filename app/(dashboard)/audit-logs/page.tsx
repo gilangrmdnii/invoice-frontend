@@ -58,6 +58,8 @@ export default function AuditLogsPage() {
             <option value="expense">Expense</option>
             <option value="budget_request">Budget Request</option>
             <option value="project">Project</option>
+            <option value="qc_document">QC Document</option>
+            <option value="project_worker">Pekerja</option>
           </select>
         </div>
       </div>

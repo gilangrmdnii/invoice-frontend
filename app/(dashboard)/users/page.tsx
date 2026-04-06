@@ -25,6 +25,7 @@ const ROLE_COLORS: Record<string, string> = {
   OWNER: 'bg-purple-50 text-purple-700',
   FINANCE: 'bg-blue-50 text-blue-700',
   SPV: 'bg-amber-50 text-amber-700',
+  QC: 'bg-teal-50 text-teal-700',
 };
 
 export default function UsersPage() {
@@ -42,7 +43,7 @@ export default function UsersPage() {
     full_name: '',
     email: '',
     password: '',
-    role: 'SPV' as 'SPV' | 'FINANCE' | 'OWNER',
+    role: 'SPV' as 'SPV' | 'QC' | 'FINANCE' | 'OWNER',
   });
 
   const { data, isLoading, isError } = useGetUsersQuery(roleFilter || undefined);
@@ -54,7 +55,7 @@ export default function UsersPage() {
   const paginatedUsers = users.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const resetForm = () => {
-    setForm({ full_name: '', email: '', password: '', role: 'SPV' });
+    setForm({ full_name: '', email: '', password: '', role: 'SPV' as 'SPV' | 'QC' | 'FINANCE' | 'OWNER' });
     setEditingUser(null);
   };
 
@@ -150,6 +151,7 @@ export default function UsersPage() {
             >
               <option value="">Semua Role</option>
               <option value="SPV">SPV</option>
+              <option value="QC">QC</option>
               <option value="FINANCE">FINANCE</option>
               <option value="OWNER">OWNER</option>
             </select>
@@ -290,11 +292,12 @@ export default function UsersPage() {
             <select
               required
               value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value as 'SPV' | 'FINANCE' | 'OWNER' })}
+              onChange={(e) => setForm({ ...form, role: e.target.value as 'SPV' | 'QC' | 'FINANCE' | 'OWNER' })}
               disabled={editingUser !== null && isSelf(editingUser.id)}
               className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="SPV">SPV</option>
+              <option value="QC">QC</option>
               <option value="FINANCE">FINANCE</option>
               <option value="OWNER">OWNER</option>
             </select>

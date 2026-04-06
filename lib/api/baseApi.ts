@@ -25,6 +25,8 @@ export const baseApi = createApi({
     'Payment',
     'User',
     'ProjectPlan',
+    'QCDocument',
+    'Worker',
   ],
   endpoints: () => ({}),
 });
