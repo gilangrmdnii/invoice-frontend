@@ -460,6 +460,168 @@ export interface UpdateQCDocumentRequest {
   file_url?: string;
 }
 
+// ==================== QC Financial Report ====================
+export type QCProjectType = 'KUALITATIF' | 'KUANTITATIF';
+export type QCMethodology = 'FGD_TRIAD' | 'HOME_VISIT' | 'CLT' | 'IDI' | 'RANDOM';
+export type QCArea = 'URBAN' | 'RURAL' | 'URBAN_RURAL';
+export type QCItemCategory =
+  | 'VISIT_URBAN'
+  | 'VISIT_RURAL'
+  | 'TELP_QUAL'
+  | 'TELP_QUANT'
+  | 'CLT_TIMESHEET'
+  | 'RECORDING'
+  | 'UANG_MAKAN'
+  | 'INPUT_PERPI'
+  | 'PARKIR'
+  | 'BENSIN'
+  | 'LAIN_LAIN';
+export type QCItemStatus = 'OK' | 'DO' | 'NONE';
+
+export const QC_PROJECT_TYPE_LABELS: Record<QCProjectType, string> = {
+  KUALITATIF: 'Kualitatif',
+  KUANTITATIF: 'Kuantitatif',
+};
+
+export const QC_METHODOLOGY_LABELS: Record<QCMethodology, string> = {
+  FGD_TRIAD: 'FGD / Triad',
+  HOME_VISIT: 'Home Visit / Ethno',
+  CLT: 'CLT',
+  IDI: 'IDI',
+  RANDOM: 'Random',
+};
+
+export const QC_AREA_LABELS: Record<QCArea, string> = {
+  URBAN: 'Urban',
+  RURAL: 'Rural',
+  URBAN_RURAL: 'Urban & Rural',
+};
+
+export const QC_CATEGORY_LABELS: Record<QCItemCategory, string> = {
+  VISIT_URBAN: 'Visit Urban',
+  VISIT_RURAL: 'Visit Rural',
+  TELP_QUAL: 'Telp Qual',
+  TELP_QUANT: 'Telp Quant',
+  CLT_TIMESHEET: 'CLT / Time Sheet',
+  RECORDING: 'Recording',
+  UANG_MAKAN: 'Uang Makan',
+  INPUT_PERPI: 'Input Perpi',
+  PARKIR: 'Parkir',
+  BENSIN: 'Bensin',
+  LAIN_LAIN: 'Lain-lain',
+};
+
+export interface QCReportItem {
+  id?: number;
+  category: QCItemCategory;
+  status: QCItemStatus;
+  label: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+  sort_order: number;
+  created_at?: string;
+}
+
+export interface QCRecruiterPerformance {
+  id?: number;
+  recruiter_name: string;
+  total: number;
+  ok_perpi: number;
+  do_perpi: number;
+  ok_qc: number;
+  do_qc: number;
+  notes: string;
+  sort_order: number;
+  created_at?: string;
+}
+
+export interface QCReport {
+  id: number;
+  project_id: number;
+  project_name: string;
+  qc_user_id: number;
+  qc_user_name: string;
+  spv_names: string;
+  project_type: QCProjectType;
+  methodology: QCMethodology;
+  city: string;
+  area: QCArea;
+  execution_start_date: string | null;
+  execution_end_date: string | null;
+  briefing_date: string | null;
+  work_start_date: string | null;
+  work_end_date: string | null;
+  visit_target: number;
+  visit_ok: number;
+  telp_target: number;
+  telp_ok: number;
+  total_amount: number;
+  location: string;
+  report_date: string | null;
+  qc_signatory_name: string;
+  qc_signatory_title: string;
+  coordinator_signatory_name: string;
+  coordinator_signatory_title: string;
+  note: string;
+  created_by: number;
+  creator_name: string;
+  items: QCReportItem[];
+  recruiters: QCRecruiterPerformance[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QCReportItemRequest {
+  category: QCItemCategory;
+  status?: QCItemStatus;
+  label?: string;
+  quantity: number;
+  unit_price: number;
+  sort_order?: number;
+}
+
+export interface QCRecruiterPerformanceRequest {
+  recruiter_name: string;
+  total: number;
+  ok_perpi: number;
+  do_perpi: number;
+  ok_qc: number;
+  do_qc: number;
+  notes?: string;
+  sort_order?: number;
+}
+
+export interface CreateQCReportRequest {
+  project_id: number;
+  qc_user_id: number;
+  spv_names?: string;
+  project_type: QCProjectType;
+  methodology: QCMethodology;
+  city?: string;
+  area: QCArea;
+  execution_start_date?: string | null;
+  execution_end_date?: string | null;
+  briefing_date?: string | null;
+  work_start_date?: string | null;
+  work_end_date?: string | null;
+  visit_target: number;
+  visit_ok: number;
+  telp_target: number;
+  telp_ok: number;
+  location?: string;
+  report_date?: string | null;
+  qc_signatory_name?: string;
+  qc_signatory_title?: string;
+  coordinator_signatory_name?: string;
+  coordinator_signatory_title?: string;
+  note?: string;
+  items: QCReportItemRequest[];
+  recruiters: QCRecruiterPerformanceRequest[];
+}
+
+export type UpdateQCReportRequest = Partial<Omit<CreateQCReportRequest, 'project_id'>>;
+
 // ==================== Project Worker ====================
 export interface ProjectWorker {
   id: number;

@@ -7,7 +7,6 @@ import {
   useUpdateQCDocumentMutation,
   useDeleteQCDocumentMutation,
 } from '@/lib/api/qcDocumentApi';
-import { useGetProjectsQuery } from '@/lib/api/projectApi';
 import { useUploadFileMutation } from '@/lib/api/uploadApi';
 import { useAppSelector } from '@/lib/hooks';
 import { formatDate, getApiBaseUrl } from '@/lib/utils';
@@ -17,7 +16,6 @@ import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
-import Pagination from '@/components/ui/Pagination';
 import {
   Plus,
   Image,
@@ -28,14 +26,12 @@ import {
   Pencil,
   Upload,
   CheckCircle,
-  Filter,
   Eye,
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 
-const ITEMS_PER_PAGE = 12;
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 const DOC_TYPE_ICONS: Record<DocumentType, typeof Image> = {
@@ -68,54 +64,41 @@ function getAcceptForType(type: DocumentType | '') {
   return ACCEPTED_FILES[type] || getAllAcceptedFiles();
 }
 
-export default function QCDocumentsPage() {
+interface QCDocumentTabProps {
+  projectId: number;
+}
+
+export default function QCDocumentTab({ projectId }: QCDocumentTabProps) {
   const user = useAppSelector((s) => s.auth.user);
-  const [projectFilter, setProjectFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
-  const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingDoc, setEditingDoc] = useState<QCDocument | null>(null);
   const [previewDoc, setPreviewDoc] = useState<QCDocument | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<QCDocument | null>(null);
 
-  const { data, isLoading, isError } = useGetQCDocumentsQuery(
-    projectFilter ? Number(projectFilter) : undefined
-  );
-  const { data: projectsData } = useGetProjectsQuery();
+  const { data, isLoading, isError } = useGetQCDocumentsQuery(projectId);
   const [createDoc, { isLoading: creating }] = useCreateQCDocumentMutation();
   const [updateDoc, { isLoading: updating }] = useUpdateQCDocumentMutation();
   const [deleteDoc] = useDeleteQCDocumentMutation();
   const [uploadFile, { isLoading: uploading }] = useUploadFileMutation();
 
   const [form, setForm] = useState({
-    project_id: '',
     title: '',
     description: '',
     document_type: '' as DocumentType | '',
     file_url: '',
   });
 
-  const projects = projectsData?.data || [];
   const allDocs = data?.data || [];
   const filtered = typeFilter
     ? allDocs.filter((d) => d.document_type === typeFilter)
     : allDocs;
-  const paginatedDocs = filtered.slice(
-    (page - 1) * ITEMS_PER_PAGE,
-    page * ITEMS_PER_PAGE
-  );
 
   const isFieldRole = user?.role === 'SPV' || user?.role === 'QC';
   const apiBase = getApiBaseUrl();
 
   const resetForm = () => {
-    setForm({
-      project_id: '',
-      title: '',
-      description: '',
-      document_type: '',
-      file_url: '',
-    });
+    setForm({ title: '', description: '', document_type: '', file_url: '' });
     setEditingDoc(null);
   };
 
@@ -127,7 +110,6 @@ export default function QCDocumentsPage() {
   const openEdit = (doc: QCDocument) => {
     setEditingDoc(doc);
     setForm({
-      project_id: String(doc.project_id),
       title: doc.title,
       description: doc.description || '',
       document_type: doc.document_type,
@@ -182,7 +164,7 @@ export default function QCDocumentsPage() {
         toast.success('Dokumen berhasil diperbarui!');
       } else {
         await createDoc({
-          project_id: Number(form.project_id),
+          project_id: projectId,
           title: form.title,
           description: form.description || undefined,
           document_type: form.document_type as DocumentType,
@@ -211,8 +193,8 @@ export default function QCDocumentsPage() {
   };
 
   const canModify = (doc: QCDocument) => {
-    if (!isFieldRole) return true; // FINANCE/OWNER can modify any
-    return doc.uploaded_by === user?.id; // field roles only own
+    if (!isFieldRole) return true;
+    return doc.uploaded_by === user?.id;
   };
 
   if (isLoading) return <LoadingSpinner />;
@@ -230,41 +212,16 @@ export default function QCDocumentsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Dokumen QC</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            {filtered.length} dokumen
-          </p>
+          <p className="text-sm text-slate-500 mt-1">{filtered.length} dokumen</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Filter size={16} className="text-slate-400" />
-            <select
-              value={projectFilter}
-              onChange={(e) => {
-                setProjectFilter(e.target.value);
-                setPage(1);
-              }}
-              className="px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-            >
-              <option value="">Semua Proyek</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
           <select
             value={typeFilter}
-            onChange={(e) => {
-              setTypeFilter(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setTypeFilter(e.target.value)}
             className="px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           >
             <option value="">Semua Tipe</option>
-            {(
-              Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]
-            ).map((t) => (
+            {(Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).map((t) => (
               <option key={t} value={t}>
                 {DOCUMENT_TYPE_LABELS[t]}
               </option>
@@ -284,7 +241,7 @@ export default function QCDocumentsPage() {
       {filtered.length === 0 ? (
         <EmptyState
           title="Belum ada dokumen QC"
-          description="Dokumen QC yang diupload akan muncul di sini"
+          description="Upload dokumen QC untuk proyek ini"
           action={
             <button
               onClick={openCreate}
@@ -296,108 +253,96 @@ export default function QCDocumentsPage() {
           }
         />
       ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {paginatedDocs.map((doc) => {
-              const Icon = DOC_TYPE_ICONS[doc.document_type];
-              return (
-                <div
-                  key={doc.id}
-                  className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-indigo-100 transition-all"
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filtered.map((doc) => {
+            const Icon = DOC_TYPE_ICONS[doc.document_type];
+            return (
+              <div
+                key={doc.id}
+                className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-indigo-100 transition-all"
+              >
+                <button
+                  onClick={() => setPreviewDoc(doc)}
+                  className="w-full h-40 bg-slate-50 flex items-center justify-center relative overflow-hidden cursor-pointer"
                 >
-                  {/* Preview Area */}
-                  <button
-                    onClick={() => setPreviewDoc(doc)}
-                    className="w-full h-40 bg-slate-50 flex items-center justify-center relative overflow-hidden cursor-pointer"
-                  >
-                    {doc.document_type === 'IMAGE' ? (
-                      <img
-                        src={`${apiBase}${doc.file_url}`}
-                        alt={doc.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center gap-2">
-                        <div
-                          className={clsx(
-                            'w-14 h-14 rounded-2xl flex items-center justify-center',
-                            DOC_TYPE_COLORS[doc.document_type]
-                          )}
-                        >
-                          <Icon size={28} />
-                        </div>
-                        <span className="text-xs text-slate-400">
-                          {DOCUMENT_TYPE_LABELS[doc.document_type]}
-                        </span>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                      <Eye
-                        size={24}
-                        className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg"
-                      />
-                    </div>
-                  </button>
-
-                  {/* Info */}
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="text-sm font-semibold text-slate-900 line-clamp-1">
-                        {doc.title}
-                      </h3>
-                      <span
+                  {doc.document_type === 'IMAGE' ? (
+                    <img
+                      src={`${apiBase}${doc.file_url}`}
+                      alt={doc.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <div
                         className={clsx(
-                          'text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0',
+                          'w-14 h-14 rounded-2xl flex items-center justify-center',
                           DOC_TYPE_COLORS[doc.document_type]
                         )}
                       >
+                        <Icon size={28} />
+                      </div>
+                      <span className="text-xs text-slate-400">
                         {DOCUMENT_TYPE_LABELS[doc.document_type]}
                       </span>
                     </div>
-                    {doc.description && (
-                      <p className="text-xs text-slate-500 line-clamp-2 mb-2">
-                        {doc.description}
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <div className="text-[11px] text-slate-400">
-                        <span>{doc.uploader_name}</span>
-                        <span className="mx-1">&middot;</span>
-                        <span>{formatDate(doc.created_at)}</span>
-                      </div>
-                      {canModify(doc) && (
-                        <div className="flex items-center gap-0.5">
-                          <button
-                            onClick={() => openEdit(doc)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                            title="Edit"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            onClick={() => setConfirmDelete(doc)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                            title="Hapus"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <Eye
+                      size={24}
+                      className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg"
+                    />
+                  </div>
+                </button>
+
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h3 className="text-sm font-semibold text-slate-900 line-clamp-1">
+                      {doc.title}
+                    </h3>
+                    <span
+                      className={clsx(
+                        'text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0',
+                        DOC_TYPE_COLORS[doc.document_type]
                       )}
+                    >
+                      {DOCUMENT_TYPE_LABELS[doc.document_type]}
+                    </span>
+                  </div>
+                  {doc.description && (
+                    <p className="text-xs text-slate-500 line-clamp-2 mb-2">
+                      {doc.description}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <div className="text-[11px] text-slate-400">
+                      <span>{doc.uploader_name}</span>
+                      <span className="mx-1">&middot;</span>
+                      <span>{formatDate(doc.created_at)}</span>
                     </div>
+                    {canModify(doc) && (
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          onClick={() => openEdit(doc)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                          title="Edit"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(doc)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          title="Hapus"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-          <div className="mt-4">
-            <Pagination
-              currentPage={page}
-              totalItems={filtered.length}
-              itemsPerPage={ITEMS_PER_PAGE}
-              onPageChange={setPage}
-            />
-          </div>
-        </>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Create/Edit Modal */}
@@ -411,28 +356,6 @@ export default function QCDocumentsPage() {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!editingDoc && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Proyek *
-              </label>
-              <select
-                required
-                value={form.project_id}
-                onChange={(e) =>
-                  setForm({ ...form, project_id: e.target.value })
-                }
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              >
-                <option value="">Pilih proyek...</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
               Judul *
@@ -454,9 +377,7 @@ export default function QCDocumentsPage() {
             <textarea
               maxLength={1000}
               value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Deskripsi dokumen (opsional)..."
               rows={2}
               className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
@@ -467,9 +388,7 @@ export default function QCDocumentsPage() {
               Tipe Dokumen *
             </label>
             <div className="grid grid-cols-4 gap-2">
-              {(
-                Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]
-              ).map((t) => {
+              {(Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).map((t) => {
                 const Icon = DOC_TYPE_ICONS[t];
                 return (
                   <button
@@ -514,9 +433,7 @@ export default function QCDocumentsPage() {
               <label className="flex items-center justify-center gap-2 w-full p-4 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all">
                 <Upload size={18} className="text-slate-400" />
                 <span className="text-sm text-slate-500">
-                  {uploading
-                    ? 'Mengupload...'
-                    : 'Upload file (max 50MB)'}
+                  {uploading ? 'Mengupload...' : 'Upload file (max 50MB)'}
                 </span>
                 <input
                   type="file"
@@ -555,11 +472,13 @@ export default function QCDocumentsPage() {
       </Modal>
 
       {/* Preview Modal */}
-      <PreviewModal
-        doc={previewDoc}
-        apiBase={apiBase}
-        onClose={() => setPreviewDoc(null)}
-      />
+      {previewDoc && (
+        <PreviewModal
+          doc={previewDoc}
+          apiBase={apiBase}
+          onClose={() => setPreviewDoc(null)}
+        />
+      )}
 
       {/* Delete Confirm */}
       <ConfirmDialog
@@ -580,12 +499,10 @@ function PreviewModal({
   apiBase,
   onClose,
 }: {
-  doc: QCDocument | null;
+  doc: QCDocument;
   apiBase: string;
   onClose: () => void;
 }) {
-  if (!doc) return null;
-
   const fileUrl = `${apiBase}${doc.file_url}`;
 
   return (
@@ -597,12 +514,9 @@ function PreviewModal({
         className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">
-              {doc.title}
-            </h3>
+            <h3 className="text-base font-semibold text-slate-900">{doc.title}</h3>
             <p className="text-xs text-slate-500 mt-0.5">
               {doc.uploader_name} &middot; {formatDate(doc.created_at)}
             </p>
@@ -615,7 +529,6 @@ function PreviewModal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-slate-50">
           {doc.document_type === 'IMAGE' && (
             <img
@@ -663,7 +576,6 @@ function PreviewModal({
           )}
         </div>
 
-        {/* Description */}
         {doc.description && (
           <div className="px-6 py-3 border-t border-slate-100">
             <p className="text-sm text-slate-600">{doc.description}</p>

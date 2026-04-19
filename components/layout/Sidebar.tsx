@@ -39,7 +39,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/projects', label: 'Proyek', icon: FolderKanban },
-    { href: '/qc-documents', label: 'Dokumen QC', icon: ClipboardCheck },
+    ...(user?.role !== 'OWNER'
+      ? [{ href: '/qc-documents', label: 'Dokumen QC', icon: ClipboardCheck }]
+      : []),
     { href: '/notifications', label: 'Notifikasi', icon: Bell },
     ...(user?.role === 'FINANCE' || user?.role === 'OWNER'
       ? [

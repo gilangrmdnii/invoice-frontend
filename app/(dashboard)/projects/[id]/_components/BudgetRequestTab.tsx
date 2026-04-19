@@ -9,7 +9,7 @@ import {
 } from '@/lib/api/budgetRequestApi';
 import { useUploadFileMutation } from '@/lib/api/uploadApi';
 import { useAppSelector } from '@/lib/hooks';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, getApiBaseUrl } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -50,7 +50,7 @@ export default function BudgetRequestTab({ projectId }: BudgetRequestTabProps) {
   const requests = allRequests.filter((r) => r.project_id === projectId);
   const filtered = filterStatus === 'ALL' ? requests : requests.filter((r) => r.status === filterStatus);
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
+  const apiBase = getApiBaseUrl();
 
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useAppSelector } from '../hooks';
 import { baseApi } from '../api/baseApi';
+import { getApiBaseUrl } from '../utils';
 import { useDispatch } from 'react-redux';
 
 export function useSSE() {
@@ -13,7 +14,7 @@ export function useSSE() {
   useEffect(() => {
     if (!token) return;
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
+    const baseUrl = getApiBaseUrl();
     const url = `${baseUrl}/api/events?token=${token}`;
 
     const es = new EventSource(url);

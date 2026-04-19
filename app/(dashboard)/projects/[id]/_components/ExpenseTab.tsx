@@ -8,7 +8,7 @@ import {
 } from '@/lib/api/expenseApi';
 import { useUploadFileMutation } from '@/lib/api/uploadApi';
 import { useAppSelector } from '@/lib/hooks';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, getApiBaseUrl } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -101,7 +101,7 @@ export default function ExpenseTab({ projectId }: ExpenseTabProps) {
     }
   };
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
+  const apiBase = getApiBaseUrl();
 
   if (isLoading) return <LoadingSpinner />;
   if (isError) return <EmptyState title="Gagal memuat pengeluaran" description="Pastikan backend berjalan dan coba refresh" />;

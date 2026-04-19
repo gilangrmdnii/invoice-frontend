@@ -6,7 +6,7 @@ import { useGetInvoiceQuery, useCreatePaymentMutation, useDeletePaymentMutation 
 import { useGetProjectPlanQuery } from '@/lib/api/projectApi';
 import { useGetCompanySettingsQuery } from '@/lib/api/companySettingsApi';
 import { useAppSelector } from '@/lib/hooks';
-import { formatNumber, formatCurrency, formatDate, terbilang, numberToWords } from '@/lib/utils';
+import { formatNumber, formatCurrency, formatDate, terbilang, numberToWords, getApiBaseUrl } from '@/lib/utils';
 import { INVOICE_TYPE_LABELS, PAYMENT_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/lib/types';
 import type { Invoice, CompanySettings, InvoiceItem, ProjectPlanItem, PaymentMethod, PaymentStatus } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -131,7 +131,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const terbilangAmount = dpAmount ?? invoice.amount;
   const amountInWords = isID ? terbilang(terbilangAmount) : numberToWords(terbilangAmount);
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
+  const apiBase = getApiBaseUrl();
 
   // Compute label totals (sum of children subtotals)
   const labelTotals: Record<number, number> = {};

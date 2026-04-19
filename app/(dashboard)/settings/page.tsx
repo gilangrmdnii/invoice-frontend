@@ -7,6 +7,7 @@ import {
 } from '@/lib/api/companySettingsApi';
 import { useUploadFileMutation } from '@/lib/api/uploadApi';
 import { useAppSelector } from '@/lib/hooks';
+import { getApiBaseUrl } from '@/lib/utils';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
 import { Building2, Save, Upload, Image } from 'lucide-react';
@@ -101,7 +102,7 @@ export default function SettingsPage() {
     );
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
+  const baseUrl = getApiBaseUrl();
 
   return (
     <div>

@@ -1,3 +1,15 @@
+export function getApiBaseUrl(): string {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+  return apiUrl.replace(/\/api\/?$/, '');
+}
+
+export function resolveFileUrl(fileUrl: string | null | undefined): string {
+  if (!fileUrl) return '';
+  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+  const base = getApiBaseUrl();
+  return `${base}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+}
+
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',

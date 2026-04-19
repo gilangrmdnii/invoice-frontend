@@ -10,8 +10,10 @@ import InvoiceTab from './_components/InvoiceTab';
 import ExpenseTab from './_components/ExpenseTab';
 import BudgetRequestTab from './_components/BudgetRequestTab';
 import WorkersTab from './_components/WorkersTab';
+import QCReportTab from './_components/QCReportTab';
+import QCDocumentTab from './_components/QCDocumentTab';
 import clsx from 'clsx';
-import { FolderKanban, ClipboardList, FileText, Receipt, Wallet, HardHat } from 'lucide-react';
+import { FolderKanban, ClipboardList, FileText, Receipt, Wallet, HardHat, FileSpreadsheet, ClipboardCheck } from 'lucide-react';
 
 const TABS = [
   { key: 'overview', label: 'Overview', icon: FolderKanban },
@@ -20,6 +22,8 @@ const TABS = [
   { key: 'expenses', label: 'Pengeluaran', icon: Receipt },
   { key: 'budget-requests', label: 'Budget Request', icon: Wallet },
   { key: 'workers', label: 'Tim Lapangan', icon: HardHat },
+  { key: 'qc-reports', label: 'Laporan QC', icon: FileSpreadsheet },
+  { key: 'qc-documents', label: 'Dokumen QC', icon: ClipboardCheck },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -89,6 +93,8 @@ export default function ProjectDetailPage() {
       {activeTab === 'expenses' && <ExpenseTab projectId={id} />}
       {activeTab === 'budget-requests' && <BudgetRequestTab projectId={id} />}
       {activeTab === 'workers' && <WorkersTab projectId={id} />}
+      {activeTab === 'qc-reports' && <QCReportTab projectId={id} />}
+      {activeTab === 'qc-documents' && <QCDocumentTab projectId={id} />}
     </div>
   );
 }
