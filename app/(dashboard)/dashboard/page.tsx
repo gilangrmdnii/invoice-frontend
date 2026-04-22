@@ -19,17 +19,52 @@ import {
 
 export default function DashboardPage() {
   const user = useAppSelector((s) => s.auth.user);
-  const { data, isLoading, isError } = useGetDashboardQuery();
+  const { data, isLoading, isError, refetch } = useGetDashboardQuery();
 
   if (isLoading) return <LoadingSpinner />;
-  if (isError) return <EmptyState title="Gagal memuat dashboard" description="Pastikan backend berjalan dan coba refresh" />;
+  if (isError)
+    return (
+      <EmptyState
+        title="Gagal memuat dashboard"
+        description="Pastikan backend berjalan dan coba refresh"
+        action={
+          <button
+            onClick={() => refetch()}
+            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
+          >
+            Coba Lagi
+          </button>
+        }
+      />
+    );
 
+  // Defensive: dashboard sections may be null/undefined for empty state
   const d = data?.data;
-  if (!d) return null;
+  const projects = d?.projects || { total_projects: 0, active_projects: 0 };
+  const budget = d?.budget || {
+    total_budget: 0,
+    total_plan_budget: 0,
+    total_spent: 0,
+    remaining: 0,
+  };
+  const expenses = d?.expenses || { total_expenses: 0, total_amount: 0 };
+  const budgetRequests = d?.budget_requests || {
+    total_requests: 0,
+    pending_requests: 0,
+    approved_requests: 0,
+    rejected_requests: 0,
+    total_amount: 0,
+  };
+  const invoices = d?.invoices || { total_invoices: 0, total_amount: 0 };
 
   const isSPV = user?.role === 'SPV' || user?.role === 'QC';
-  const budgetDisplay = isSPV ? (d.budget.total_plan_budget || 0) : d.budget.total_budget;
-  const budgetPct = getBudgetPercentage(d.budget.total_spent, budgetDisplay || d.budget.total_budget);
+  const budgetDisplay = isSPV
+    ? budget.total_plan_budget || 0
+    : budget.total_budget;
+  const budgetPct = getBudgetPercentage(
+    budget.total_spent,
+    budgetDisplay || budget.total_budget
+  );
 
   return (
     <div className="space-y-6">
@@ -50,14 +85,14 @@ export default function DashboardPage() {
               <TrendingDown size={14} />
               Terpakai
             </div>
-            <p className="text-lg font-semibold">{formatCurrency(d.budget.total_spent)}</p>
+            <p className="text-lg font-semibold">{formatCurrency(budget.total_spent)}</p>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3">
             <div className="flex items-center gap-2 text-indigo-200 text-xs mb-1">
               <TrendingUp size={14} />
               Tersisa
             </div>
-            <p className="text-lg font-semibold">{formatCurrency(isSPV ? budgetDisplay - d.budget.total_spent : d.budget.remaining)}</p>
+            <p className="text-lg font-semibold">{formatCurrency(isSPV ? budgetDisplay - budget.total_spent : budget.remaining)}</p>
           </div>
         </div>
         <div className="w-full bg-white/20 rounded-full h-2.5">
@@ -73,29 +108,29 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Proyek"
-          total={d.projects.total_projects}
-          subtitle={`${d.projects.active_projects} aktif`}
+          total={projects.total_projects}
+          subtitle={`${projects.active_projects} aktif`}
           icon={<FolderKanban size={22} />}
           color="blue"
         />
         <StatCard
           title="Invoice"
-          total={d.invoices.total_invoices}
-          subtitle={formatCurrency(d.invoices.total_amount)}
+          total={invoices.total_invoices}
+          subtitle={formatCurrency(invoices.total_amount)}
           icon={<FileText size={22} />}
           color="violet"
         />
         <StatCard
           title="Pengeluaran"
-          total={d.expenses.total_expenses}
-          subtitle={formatCurrency(d.expenses.total_amount)}
+          total={expenses.total_expenses}
+          subtitle={formatCurrency(expenses.total_amount)}
           icon={<Receipt size={22} />}
           color="amber"
         />
         <StatCard
           title="Budget Request"
-          total={d.budget_requests.total_requests}
-          subtitle={`${d.budget_requests.pending_requests} pending`}
+          total={budgetRequests.total_requests}
+          subtitle={`${budgetRequests.pending_requests} pending`}
           icon={<Wallet size={22} />}
           color="emerald"
         />
@@ -105,9 +140,9 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <StatusBreakdown
           title="Budget Request"
-          pending={d.budget_requests.pending_requests}
-          approved={d.budget_requests.approved_requests}
-          rejected={d.budget_requests.rejected_requests}
+          pending={budgetRequests.pending_requests}
+          approved={budgetRequests.approved_requests}
+          rejected={budgetRequests.rejected_requests}
         />
       </div>
     </div>
