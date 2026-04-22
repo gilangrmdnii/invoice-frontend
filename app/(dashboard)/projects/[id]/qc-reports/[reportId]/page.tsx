@@ -1,15 +1,26 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useGetQCReportQuery } from '@/lib/api/qcReportApi';
+import {
+  useGetQCReportQuery,
+  useSubmitQCReportMutation,
+  useApproveQCReportMutation,
+  useRejectQCReportMutation,
+} from '@/lib/api/qcReportApi';
+import { useAppSelector } from '@/lib/hooks';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import Modal from '@/components/ui/Modal';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
+import type { QCReportStatus } from '@/lib/types';
 import {
   QC_CATEGORY_LABELS,
   QC_METHODOLOGY_LABELS,
   QC_PROJECT_TYPE_LABELS,
   QC_AREA_LABELS,
+  QC_REPORT_STATUS_LABELS,
 } from '@/lib/types';
 import {
   ArrowLeft,
@@ -19,20 +30,91 @@ import {
   Calendar,
   MapPin,
   User,
+  Send,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import clsx from 'clsx';
 
 export default function QCReportDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const user = useAppSelector((s) => s.auth.user);
   const projectId = Number(params.id);
   const reportId = Number(params.reportId);
   const { data, isLoading, isError } = useGetQCReportQuery(reportId);
+  const [submitReport, { isLoading: submitting }] = useSubmitQCReportMutation();
+  const [approveReport, { isLoading: approving }] = useApproveQCReportMutation();
+  const [rejectReport, { isLoading: rejecting }] = useRejectQCReportMutation();
+
+  const [showApprove, setShowApprove] = useState(false);
+  const [approveNotes, setApproveNotes] = useState('');
+  const [showReject, setShowReject] = useState(false);
+  const [rejectNotes, setRejectNotes] = useState('');
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
 
   if (isLoading) return <LoadingSpinner />;
   if (isError || !data?.data)
     return <EmptyState title="Laporan tidak ditemukan" description="" />;
 
   const rep = data.data;
+  const canApprove =
+    (user?.role === 'QC_COORDINATOR' ||
+      user?.role === 'FINANCE' ||
+      user?.role === 'OWNER') &&
+    rep.status === 'PENDING';
+  const canSubmit =
+    (rep.created_by === user?.id ||
+      user?.role === 'QC_COORDINATOR' ||
+      user?.role === 'FINANCE' ||
+      user?.role === 'OWNER') &&
+    (rep.status === 'DRAFT' || rep.status === 'REJECTED');
+  const canEdit =
+    rep.status !== 'APPROVED' &&
+    (rep.created_by === user?.id ||
+      user?.role === 'FINANCE' ||
+      user?.role === 'OWNER' ||
+      user?.role === 'QC_COORDINATOR');
+
+  const handleSubmit = async () => {
+    try {
+      await submitReport(reportId).unwrap();
+      toast.success('Laporan dikirim untuk approval');
+      setConfirmSubmit(false);
+    } catch (err: unknown) {
+      const error = err as { data?: { message?: string } };
+      toast.error(error?.data?.message || 'Gagal submit');
+    }
+  };
+
+  const handleApprove = async () => {
+    try {
+      await approveReport({ id: reportId, notes: approveNotes }).unwrap();
+      toast.success('Laporan disetujui');
+      setShowApprove(false);
+      setApproveNotes('');
+    } catch (err: unknown) {
+      const error = err as { data?: { message?: string } };
+      toast.error(error?.data?.message || 'Gagal approve');
+    }
+  };
+
+  const handleReject = async () => {
+    if (rejectNotes.trim().length < 3) {
+      toast.error('Alasan penolakan minimal 3 karakter');
+      return;
+    }
+    try {
+      await rejectReport({ id: reportId, notes: rejectNotes }).unwrap();
+      toast.success('Laporan ditolak');
+      setShowReject(false);
+      setRejectNotes('');
+    } catch (err: unknown) {
+      const error = err as { data?: { message?: string } };
+      toast.error(error?.data?.message || 'Gagal reject');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -52,16 +134,46 @@ export default function QCReportDetailPage() {
             <p className="text-sm text-slate-500">{rep.project_name}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() =>
-              router.push(`/projects/${projectId}/qc-reports/${reportId}/edit`)
-            }
-            className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors"
-          >
-            <Pencil size={16} />
-            Edit
-          </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <StatusBadge status={rep.status} />
+          {canEdit && (
+            <button
+              onClick={() =>
+                router.push(`/projects/${projectId}/qc-reports/${reportId}/edit`)
+              }
+              className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              <Pencil size={16} />
+              Edit
+            </button>
+          )}
+          {canSubmit && (
+            <button
+              onClick={() => setConfirmSubmit(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white text-sm font-medium rounded-xl hover:bg-amber-600 transition-colors"
+            >
+              <Send size={16} />
+              Submit Approval
+            </button>
+          )}
+          {canApprove && (
+            <>
+              <button
+                onClick={() => setShowApprove(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-colors"
+              >
+                <CheckCircle size={16} />
+                Approve
+              </button>
+              <button
+                onClick={() => setShowReject(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-colors"
+              >
+                <XCircle size={16} />
+                Reject
+              </button>
+            </>
+          )}
           <button
             onClick={() =>
               router.push(`/projects/${projectId}/qc-reports/${reportId}/print`)
@@ -69,10 +181,64 @@ export default function QCReportDetailPage() {
             className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
           >
             <Printer size={16} />
-            Print / Cetak
+            Print
           </button>
         </div>
       </div>
+
+      {/* Approval info banner */}
+      {rep.status !== 'DRAFT' && (
+        <div
+          className={clsx(
+            'rounded-2xl p-4 flex items-start gap-3',
+            rep.status === 'PENDING' && 'bg-amber-50 border border-amber-100',
+            rep.status === 'APPROVED' && 'bg-emerald-50 border border-emerald-100',
+            rep.status === 'REJECTED' && 'bg-red-50 border border-red-100'
+          )}
+        >
+          <div>
+            {rep.status === 'PENDING' && (
+              <p className="text-sm font-semibold text-amber-700">
+                Menunggu approval dari QC Coordinator / Finance
+              </p>
+            )}
+            {rep.status === 'APPROVED' && (
+              <div className="text-sm">
+                <p className="font-semibold text-emerald-700">
+                  Disetujui oleh {rep.approver_name || '-'}
+                </p>
+                {rep.approved_at && (
+                  <p className="text-xs text-emerald-600 mt-0.5">
+                    {formatDateTime(rep.approved_at)}
+                  </p>
+                )}
+                {rep.approval_notes && (
+                  <p className="text-xs text-emerald-700 mt-1">
+                    Catatan: {rep.approval_notes}
+                  </p>
+                )}
+              </div>
+            )}
+            {rep.status === 'REJECTED' && (
+              <div className="text-sm">
+                <p className="font-semibold text-red-700">
+                  Ditolak oleh {rep.approver_name || '-'}
+                </p>
+                {rep.approved_at && (
+                  <p className="text-xs text-red-600 mt-0.5">
+                    {formatDateTime(rep.approved_at)}
+                  </p>
+                )}
+                {rep.approval_notes && (
+                  <p className="text-xs text-red-700 mt-1">
+                    Alasan: {rep.approval_notes}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Info cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -276,6 +442,129 @@ export default function QCReportDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Approve Modal */}
+      <Modal
+        isOpen={showApprove}
+        onClose={() => {
+          setShowApprove(false);
+          setApproveNotes('');
+        }}
+        title="Setujui Laporan QC"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-emerald-50 rounded-xl text-sm text-emerald-700">
+            Laporan yang disetujui tidak dapat diubah lagi oleh QC/SPV.
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Catatan (opsional)
+            </label>
+            <textarea
+              value={approveNotes}
+              onChange={(e) => setApproveNotes(e.target.value)}
+              placeholder="Catatan persetujuan..."
+              rows={3}
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
+            />
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setShowApprove(false);
+                setApproveNotes('');
+              }}
+              className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleApprove}
+              disabled={approving}
+              className="flex-1 px-4 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50"
+            >
+              {approving ? 'Memproses...' : 'Setujui'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reject Modal */}
+      <Modal
+        isOpen={showReject}
+        onClose={() => {
+          setShowReject(false);
+          setRejectNotes('');
+        }}
+        title="Tolak Laporan QC"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-red-50 rounded-xl text-sm text-red-700">
+            QC akan menerima notifikasi dan bisa revisi laporan.
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Alasan Penolakan <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              required
+              value={rejectNotes}
+              onChange={(e) => setRejectNotes(e.target.value)}
+              placeholder="Jelaskan alasan penolakan (min. 3 karakter)..."
+              rows={3}
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
+            />
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setShowReject(false);
+                setRejectNotes('');
+              }}
+              className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleReject}
+              disabled={rejecting || rejectNotes.trim().length < 3}
+              className="flex-1 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              {rejecting ? 'Memproses...' : 'Tolak'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Submit confirm */}
+      <ConfirmDialog
+        isOpen={confirmSubmit}
+        onClose={() => setConfirmSubmit(false)}
+        onConfirm={handleSubmit}
+        title="Submit Laporan untuk Approval?"
+        message="Laporan akan dikirim ke QC Coordinator / Finance untuk review. Setelah submit, status menjadi PENDING."
+        confirmLabel={submitting ? 'Memproses...' : 'Submit'}
+        variant="warning"
+      />
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: QCReportStatus }) {
+  const styles: Record<QCReportStatus, string> = {
+    DRAFT: 'bg-slate-100 text-slate-700',
+    PENDING: 'bg-amber-100 text-amber-700',
+    APPROVED: 'bg-emerald-100 text-emerald-700',
+    REJECTED: 'bg-red-100 text-red-700',
+  };
+  return (
+    <span
+      className={clsx(
+        'text-xs font-semibold px-3 py-1.5 rounded-lg',
+        styles[status]
+      )}
+    >
+      {QC_REPORT_STATUS_LABELS[status]}
+    </span>
   );
 }

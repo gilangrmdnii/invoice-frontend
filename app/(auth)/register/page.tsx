@@ -32,7 +32,7 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'SPV' as 'SPV' | 'QC' | 'FINANCE' | 'OWNER',
+    role: 'SPV' as 'SPV' | 'QC' | 'QC_COORDINATOR' | 'FINANCE' | 'OWNER',
   });
 
   const passwordStrength = getPasswordStrength(form.password);
@@ -65,6 +65,7 @@ export default function RegisterPage() {
   const roles = [
     { value: 'SPV', label: 'Supervisor', desc: 'Upload invoice & kelola expense' },
     { value: 'QC', label: 'Quality Control', desc: 'Kontrol kualitas & kelola invoice' },
+    { value: 'QC_COORDINATOR', label: 'QC Coordinator', desc: 'Generate & approve laporan QC' },
     { value: 'FINANCE', label: 'Finance', desc: 'Approve/reject & kelola proyek' },
     { value: 'OWNER', label: 'Owner', desc: 'Akses penuh ke semua fitur' },
   ] as const;
@@ -218,7 +219,7 @@ export default function RegisterPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Role</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {roles.map((r) => (
                   <button
                     key={r.value}

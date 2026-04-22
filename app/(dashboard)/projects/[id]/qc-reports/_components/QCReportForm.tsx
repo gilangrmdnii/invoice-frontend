@@ -81,7 +81,7 @@ export default function QCReportForm({ projectId, initial }: QCReportFormProps) 
   const { data: usersData } = useGetUsersQuery(undefined);
 
   const users = usersData?.data || [];
-  const qcUsers = users.filter((u) => u.role === 'QC');
+  const qcUsers = users.filter((u) => u.role === 'QC' || u.role === 'QC_COORDINATOR');
 
   const [form, setForm] = useState({
     qc_user_id: initial?.qc_user_id ? String(initial.qc_user_id) : '',

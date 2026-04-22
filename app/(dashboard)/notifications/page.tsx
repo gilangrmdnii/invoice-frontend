@@ -51,6 +51,9 @@ export default function NotificationsPage() {
       router.push(`/invoices/${notif.reference_id}`);
     } else if (type === 'QC_DOCUMENT_CREATED') {
       router.push('/qc-documents');
+    } else if (type.startsWith('QC_REPORT') && notif.reference_id) {
+      // Note: QC Report route needs project id; best-effort to projects page
+      router.push('/projects');
     }
   };
 

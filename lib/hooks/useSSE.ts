@@ -49,6 +49,14 @@ export function useSSE() {
       dispatch(baseApi.util.invalidateTags(['QCDocument', 'Notification']));
     });
 
+    ['QC_REPORT_SUBMITTED', 'QC_REPORT_APPROVED', 'QC_REPORT_REJECTED'].forEach(
+      (evt) => {
+        es.addEventListener(evt, () => {
+          dispatch(baseApi.util.invalidateTags(['QCReport', 'Notification']));
+        });
+      }
+    );
+
     es.onerror = () => {
       // EventSource will auto-reconnect on error
     };

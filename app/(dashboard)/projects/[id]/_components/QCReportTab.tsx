@@ -8,12 +8,14 @@ import {
 } from '@/lib/api/qcReportApi';
 import { useAppSelector } from '@/lib/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import type { QCReport } from '@/lib/types';
+import type { QCReport, QCReportStatus } from '@/lib/types';
 import {
   QC_PROJECT_TYPE_LABELS,
   QC_METHODOLOGY_LABELS,
   QC_AREA_LABELS,
+  QC_REPORT_STATUS_LABELS,
 } from '@/lib/types';
+import clsx from 'clsx';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -45,6 +47,7 @@ export default function QCReportTab({ projectId }: QCReportTabProps) {
   const isFieldRole = user?.role === 'SPV' || user?.role === 'QC';
 
   const canModify = (rep: QCReport) => {
+    if (rep.status === 'APPROVED' && isFieldRole) return false;
     if (!isFieldRole) return true;
     return rep.created_by === user?.id;
   };
@@ -110,8 +113,11 @@ export default function QCReportTab({ projectId }: QCReportTabProps) {
               className="bg-white rounded-2xl border border-slate-100 p-5 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
-                  <FileSpreadsheet size={20} className="text-indigo-600" />
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
+                    <FileSpreadsheet size={20} className="text-indigo-600" />
+                  </div>
+                  <StatusBadge status={rep.status} />
                 </div>
                 <div className="flex items-center gap-1">
                   <button
@@ -216,5 +222,24 @@ export default function QCReportTab({ projectId }: QCReportTabProps) {
         variant="danger"
       />
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: QCReportStatus }) {
+  const styles: Record<QCReportStatus, string> = {
+    DRAFT: 'bg-slate-100 text-slate-600',
+    PENDING: 'bg-amber-50 text-amber-700',
+    APPROVED: 'bg-emerald-50 text-emerald-700',
+    REJECTED: 'bg-red-50 text-red-700',
+  };
+  return (
+    <span
+      className={clsx(
+        'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+        styles[status]
+      )}
+    >
+      {QC_REPORT_STATUS_LABELS[status]}
+    </span>
   );
 }

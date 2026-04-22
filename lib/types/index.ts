@@ -2,7 +2,7 @@ export interface User {
   id: number;
   full_name: string;
   email: string;
-  role: 'SPV' | 'QC' | 'FINANCE' | 'OWNER';
+  role: 'SPV' | 'QC' | 'QC_COORDINATOR' | 'FINANCE' | 'OWNER';
   created_at: string;
   updated_at: string;
 }
@@ -16,21 +16,21 @@ export interface RegisterRequest {
   full_name: string;
   email: string;
   password: string;
-  role: 'SPV' | 'QC' | 'FINANCE' | 'OWNER';
+  role: 'SPV' | 'QC' | 'QC_COORDINATOR' | 'FINANCE' | 'OWNER';
 }
 
 export interface CreateUserRequest {
   full_name: string;
   email: string;
   password: string;
-  role: 'SPV' | 'QC' | 'FINANCE' | 'OWNER';
+  role: 'SPV' | 'QC' | 'QC_COORDINATOR' | 'FINANCE' | 'OWNER';
 }
 
 export interface UpdateUserRequest {
   full_name?: string;
   email?: string;
   password?: string;
-  role?: 'SPV' | 'QC' | 'FINANCE' | 'OWNER';
+  role?: 'SPV' | 'QC' | 'QC_COORDINATOR' | 'FINANCE' | 'OWNER';
 }
 
 export interface AuthResponse {
@@ -477,6 +477,14 @@ export type QCItemCategory =
   | 'BENSIN'
   | 'LAIN_LAIN';
 export type QCItemStatus = 'OK' | 'DO' | 'NONE';
+export type QCReportStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export const QC_REPORT_STATUS_LABELS: Record<QCReportStatus, string> = {
+  DRAFT: 'Draft',
+  PENDING: 'Menunggu Approval',
+  APPROVED: 'Disetujui',
+  REJECTED: 'Ditolak',
+};
 
 export const QC_PROJECT_TYPE_LABELS: Record<QCProjectType, string> = {
   KUALITATIF: 'Kualitatif',
@@ -557,6 +565,11 @@ export interface QCReport {
   telp_target: number;
   telp_ok: number;
   total_amount: number;
+  status: QCReportStatus;
+  approved_by: number | null;
+  approver_name: string;
+  approval_notes: string;
+  approved_at: string | null;
   location: string;
   report_date: string | null;
   qc_signatory_name: string;

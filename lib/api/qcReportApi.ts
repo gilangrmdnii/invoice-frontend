@@ -29,6 +29,26 @@ export const qcReportApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `/qc-reports/${id}`, method: 'DELETE' }),
       invalidatesTags: ['QCReport', 'AuditLog'],
     }),
+    submitQCReport: builder.mutation<ApiResponse<QCReport>, number>({
+      query: (id) => ({ url: `/qc-reports/${id}/submit`, method: 'POST' }),
+      invalidatesTags: ['QCReport', 'Notification', 'AuditLog'],
+    }),
+    approveQCReport: builder.mutation<ApiResponse<QCReport>, { id: number; notes?: string }>({
+      query: ({ id, notes }) => ({
+        url: `/qc-reports/${id}/approve`,
+        method: 'POST',
+        body: { notes: notes || '' },
+      }),
+      invalidatesTags: ['QCReport', 'Notification', 'AuditLog'],
+    }),
+    rejectQCReport: builder.mutation<ApiResponse<QCReport>, { id: number; notes: string }>({
+      query: ({ id, notes }) => ({
+        url: `/qc-reports/${id}/reject`,
+        method: 'POST',
+        body: { notes },
+      }),
+      invalidatesTags: ['QCReport', 'Notification', 'AuditLog'],
+    }),
   }),
 });
 
@@ -38,4 +58,7 @@ export const {
   useCreateQCReportMutation,
   useUpdateQCReportMutation,
   useDeleteQCReportMutation,
+  useSubmitQCReportMutation,
+  useApproveQCReportMutation,
+  useRejectQCReportMutation,
 } = qcReportApi;
