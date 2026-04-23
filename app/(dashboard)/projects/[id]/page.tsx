@@ -12,8 +12,9 @@ import BudgetRequestTab from './_components/BudgetRequestTab';
 import WorkersTab from './_components/WorkersTab';
 import QCReportTab from './_components/QCReportTab';
 import QCDocumentTab from './_components/QCDocumentTab';
+import FinanceReportTab from './_components/FinanceReportTab';
 import clsx from 'clsx';
-import { FolderKanban, ClipboardList, FileText, Receipt, Wallet, HardHat, FileSpreadsheet, ClipboardCheck } from 'lucide-react';
+import { FolderKanban, ClipboardList, FileText, Receipt, Wallet, HardHat, FileSpreadsheet, ClipboardCheck, Banknote } from 'lucide-react';
 
 const TABS = [
   { key: 'overview', label: 'Overview', icon: FolderKanban },
@@ -24,6 +25,7 @@ const TABS = [
   { key: 'workers', label: 'Tim Lapangan', icon: HardHat },
   { key: 'qc-reports', label: 'Laporan QC', icon: FileSpreadsheet },
   { key: 'qc-documents', label: 'Dokumen QC', icon: ClipboardCheck },
+  { key: 'finance-report', label: 'Laporan Finance', icon: Banknote, financeOnly: true },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -52,8 +54,11 @@ export default function ProjectDetailPage() {
     router.replace(`/projects/${id}${qs ? `?${qs}` : ''}`, { scroll: false });
   };
 
-  // All roles can see all tabs (QC and SPV can create invoices)
-  const visibleTabs = TABS;
+  // Finance report tab only for FINANCE & OWNER
+  const isFinanceOrOwner = user?.role === 'FINANCE' || user?.role === 'OWNER';
+  const visibleTabs = TABS.filter(
+    (t) => !('financeOnly' in t && t.financeOnly) || isFinanceOrOwner
+  );
 
   if (isLoading) return <LoadingSpinner />;
   if (!project) return <div className="text-center text-slate-500 py-20">Proyek tidak ditemukan</div>;
@@ -95,6 +100,7 @@ export default function ProjectDetailPage() {
       {activeTab === 'workers' && <WorkersTab projectId={id} />}
       {activeTab === 'qc-reports' && <QCReportTab projectId={id} />}
       {activeTab === 'qc-documents' && <QCDocumentTab projectId={id} />}
+      {activeTab === 'finance-report' && <FinanceReportTab projectId={id} />}
     </div>
   );
 }

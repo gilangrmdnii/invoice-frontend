@@ -28,6 +28,7 @@ export const baseApi = createApi({
     'QCDocument',
     'Worker',
     'QCReport',
+    'FinanceReport',
   ],
   endpoints: () => ({}),
 });

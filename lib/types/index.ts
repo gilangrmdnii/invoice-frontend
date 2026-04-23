@@ -460,6 +460,110 @@ export interface UpdateQCDocumentRequest {
   file_url?: string;
 }
 
+// ==================== Finance Report ====================
+export interface FinanceRecruiterFee {
+  id?: number;
+  recruiter_name: string;
+  jumlah: number;
+  fee_recruiter: number;
+  insentif_responden_main: number;
+  jumlah_responden_main: number;
+  insentif_responden_backup: number;
+  jumlah_responden_backup: number;
+  sort_order?: number;
+  total?: number;
+}
+
+export interface FinanceSampleEntry {
+  id?: number;
+  tanggal_pelaksanaan: string;
+  jumlah_sample: number;
+  insentif_responden_main: number;
+  jumlah_responden_main: number;
+  insentif_responden_backup: number;
+  jumlah_responden_backup: number;
+  sort_order?: number;
+  total?: number;
+}
+
+export interface FinanceManualExpense {
+  id?: number;
+  member_user_id: number | null;
+  member_name: string;
+  category: string;
+  tanggal: string | null;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount?: number;
+  sort_order?: number;
+}
+
+export interface MemberBreakdown {
+  user_id: number;
+  full_name: string;
+  role: string;
+  categories: Record<string, number>;
+  total: number;
+}
+
+export interface DateExpenseRow {
+  tanggal: string;
+  member_name: string;
+  uang_masuk: number;
+  uang_keluar: number;
+}
+
+export interface FinanceReport {
+  project_id: number;
+  project_name: string;
+  execution_start_date: string | null;
+  execution_end_date: string | null;
+  spv_names: string;
+  qc_names: string;
+  jumlah_main: number;
+  jumlah_backup: number;
+  member_breakdowns: MemberBreakdown[];
+  daily_expenses: DateExpenseRow[];
+  recruiter_fees: FinanceRecruiterFee[];
+  sample_entries: FinanceSampleEntry[];
+  manual_expenses: FinanceManualExpense[];
+  total_pengeluaran: number;
+  total_perolehan_recruit: number;
+  total_sample_incentive: number;
+  total_yang_dibayarkan: number;
+}
+
+export interface UpsertFinanceReportRequest {
+  recruiter_fees: Omit<FinanceRecruiterFee, 'id' | 'total'>[];
+  sample_entries: Omit<FinanceSampleEntry, 'id' | 'total'>[];
+  manual_expenses: Omit<FinanceManualExpense, 'id' | 'amount'>[];
+}
+
+export const FINANCE_EXPENSE_CATEGORIES = [
+  'SPV',
+  'UANG_MAKAN',
+  'PULSA',
+  'RECORDING',
+  'INPUT_PERPI',
+  'BENSIN',
+  'BRIEFING',
+  'TRANSPORT',
+  'LAIN_LAIN',
+] as const;
+
+export const FINANCE_CATEGORY_LABELS: Record<string, string> = {
+  SPV: 'SPV',
+  UANG_MAKAN: 'Uang Makan',
+  PULSA: 'Pulsa',
+  RECORDING: 'Recording',
+  INPUT_PERPI: 'Input Perpi',
+  BENSIN: 'Bensin',
+  BRIEFING: 'Briefing',
+  TRANSPORT: 'Transport',
+  LAIN_LAIN: 'Lain-lain',
+};
+
 // ==================== QC Financial Report ====================
 export type QCProjectType = 'KUALITATIF' | 'KUANTITATIF';
 export type QCMethodology = 'FGD_TRIAD' | 'HOME_VISIT' | 'CLT' | 'IDI' | 'RANDOM';

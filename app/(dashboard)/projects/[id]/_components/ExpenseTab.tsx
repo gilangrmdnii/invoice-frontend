@@ -106,7 +106,21 @@ export default function ExpenseTab({ projectId }: ExpenseTabProps) {
   if (isLoading) return <LoadingSpinner />;
   if (isError) return <EmptyState title="Gagal memuat pengeluaran" description="Pastikan backend berjalan dan coba refresh" />;
 
-  const categories = ['Supplies', 'Equipment', 'Travel', 'Marketing', 'Office', 'Lainnya'];
+  const categories = [
+    'SPV',
+    'UANG_MAKAN',
+    'PULSA',
+    'RECORDING',
+    'INPUT_PERPI',
+    'BENSIN',
+    'BRIEFING',
+    'TRANSPORT',
+    'Supplies',
+    'Equipment',
+    'Marketing',
+    'Office',
+    'LAIN_LAIN',
+  ];
 
   return (
     <div>
